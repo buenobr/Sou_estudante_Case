@@ -1,4 +1,4 @@
-// 4. QUARTO PASSO: Substitua o conteúdo do seu arquivo lib/home_screen.dart por este código:
+// 6. SEXTO PASSO: Substitua o conteúdo do seu arquivo lib/home_screen.dart:
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 
 import 'login_screen.dart';
 import 'add_promotion_screen.dart';
+import 'promotion_detail_screen.dart';
+import 'app_colors.dart'; // Importa nosso arquivo de cores
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -38,7 +40,7 @@ class HomeScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Promoções'), backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, actions: buildAppBarActions()),
+      appBar: AppBar(title: const Text('Promoções'), actions: buildAppBarActions()),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('promotions').orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
@@ -68,10 +70,15 @@ class HomeScreen extends StatelessWidget {
                 child: ListTile(
                   leading: Container(width: 80, height: 80, color: Colors.grey[200], child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.contain, loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()), errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)) : const Icon(Icons.shopping_bag, color: Colors.grey)),
                   title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ const SizedBox(height: 4), Text(category, style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 12)), const SizedBox(height: 4), Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)) ]),
+                  subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [ const SizedBox(height: 4), Text(category, style: const TextStyle(color: AppColors.primary, fontSize: 12)), const SizedBox(height: 4), Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)) ]),
                   trailing: isOwner ? PopupMenuButton<String>(onSelected: (value) { if (value == 'delete') { _deletePromotion(context, promo.id, imageUrl); } }, itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[ const PopupMenuItem<String>(value: 'delete', child: Text('Deletar')) ]) : const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
-                    // Ação de clique removida por enquanto
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PromotionDetailScreen(promotionData: data),
+                      ),
+                    );
                   },
                 ),
               );

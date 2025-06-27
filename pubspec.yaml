@@ -37,6 +37,7 @@ dependencies:
   firebase_storage: ^11.7.7
   image_picker: ^1.1.2
   any_link_preview: ^3.0.3
+  url_launcher: ^6.3.0
 
   cupertino_icons: ^1.0.6
  

@@ -1,5 +1,5 @@
-// 2. SEGUNDO PASSO: Substitua o conteúdo do seu arquivo lib/add_promotion_screen.dart por este código:
-// Esta é a versão estável, sem o campo de descrição.
+// 4. QUARTO PASSO: Substitua o conteúdo do seu arquivo lib/add_promotion_screen.dart.
+// Ele foi ajustado para usar as cores do tema.
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,6 +20,8 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
   final _priceController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
   bool _isLoading = false;
   bool _isFetchingLink = false;
 
@@ -105,6 +107,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
         'category': _selectedCategory,
         'imageUrl': finalImageUrl,
+        'description': _descriptionController.text.trim(),
         'submittedBy': user.uid,
         'createdAt': Timestamp.now(),
         'status': 'pending',
@@ -138,6 +141,8 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
               TextFormField(controller: _linkController, decoration: const InputDecoration(labelText: 'Link da Promoção'), validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
               Align(alignment: Alignment.centerRight, child: TextButton.icon(icon: const Icon(Icons.search, size: 20), label: const Text('Buscar dados do link'), onPressed: _fetchLinkPreview)),
               TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Preço (ex: 99.90)'), keyboardType: TextInputType.number, validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
+              const SizedBox(height: 16),
+              TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição (opcional)', border: OutlineInputBorder()), maxLines: 4),
               const SizedBox(height: 24),
               const Text('Imagem Principal', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
