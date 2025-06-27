@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "167027864856",
+    "project_id": "souestudante-30b84",
+    "storage_bucket": "souestudante-30b84.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167027864856:android:eb0503f791119708d5da6d",
+        "android_client_info": {
+          "package_name": "com.example.sou_estudante"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB572Mbr1GPDBKlAyZ6J1u-IKje2si8gCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
