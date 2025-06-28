@@ -32,7 +32,6 @@ class PromotionDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (imageUrl != null)
-              // MUDANÇA: Imagem com padding e cantos arredondados
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ClipRRect(
@@ -67,10 +66,9 @@ class PromotionDetailScreen extends StatelessWidget {
                         icon: const Icon(Icons.link),
                         label: const Text('Abrir Link'),
                         onPressed: () => _launchURL(link),
-                        // MUDANÇA: Estilo do botão para aumentar a fonte
                         style: ElevatedButton.styleFrom(
                           textStyle: const TextStyle(
-                            fontSize: 18, // <<< FONTE AUMENTADA
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           )
                         ),
