@@ -1,23 +1,22 @@
 // =================================================================================
-// 2. ARQUIVO: lib/main.dart (ATUALIZADO)
+// ARQUIVO 2: lib/main.dart (ATUALIZADO)
 // =================================================================================
+// AuthGate agora usa o stream 'userChanges' para detectar a verificação do e-mail.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'; // Importa o pacote de localização
-import 'package:intl/intl.dart'; // Importa o pacote de internacionalização
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 
 import 'firebase_options.dart';
 import 'home_screen.dart';
 import 'app_colors.dart';
+import 'verify_email_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Define o local padrão para o app, essencial para a formatação de moeda
   Intl.defaultLocale = 'pt_BR';
-  
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   MobileAds.instance.initialize();
   runApp(const MyApp());
@@ -30,7 +29,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Promo Student',
-      // Adiciona as configurações de localização para o app
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -69,12 +67,19 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      // MUDANÇA: Usando 'userChanges()' em vez de 'authStateChanges()'.
+      // Este stream é mais sensível e detecta mudanças no estado do usuário,
+      // como a verificação de e-mail.
+      stream: FirebaseAuth.instance.userChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         if (snapshot.hasData) {
+          final user = snapshot.data!;
+          if (!user.isAnonymous && !user.emailVerified) {
+            return const VerifyEmailScreen();
+          }
           return const HomeScreen();
         }
         return FutureBuilder(

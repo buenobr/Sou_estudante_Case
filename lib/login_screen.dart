@@ -1,10 +1,11 @@
 // =================================================================================
-// 4. ARQUIVO: lib/login_screen.dart (ATUALIZADO)
+// ARQUIVO 3: lib/login_screen.dart (ATUALIZADO)
 // =================================================================================
-// Adicionada a criação do documento do usuário no Firestore ao se cadastrar.
+// O método de cadastro agora envia o e-mail de verificação.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,6 +28,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await _auth.signInWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
+      // A lógica do AuthGate vai direcionar para a tela certa (verificação ou home)
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar('Erro no login: ${e.message}');
@@ -39,22 +41,58 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
+      // 1. Cria o usuário
       final userCredential = await _auth.createUserWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
       
-      // CRIA O DOCUMENTO DO USUÁRIO NO FIRESTORE
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
-        'email': userCredential.user!.email,
-        'uid': userCredential.user!.uid,
-        'role': 'user', // Papel padrão
-        'favorites': [], // Lista de favoritos inicial
-        'createdAt': Timestamp.now(),
-      });
+      // 2. Envia o e-mail de verificação
+      await userCredential.user?.sendEmailVerification();
+      
+      // 3. Cria o documento do usuário no Firestore
+      await _createUserDocument(userCredential.user!);
 
-      if (mounted) Navigator.of(context).pop();
+      // 4. Mostra uma mensagem de sucesso e fecha a tela de login.
+      // O AuthGate vai direcionar para a tela de verificação.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conta criada! Verifique seu e-mail para continuar.'), backgroundColor: Colors.green),
+        );
+        Navigator.of(context).pop();
+      }
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar('Erro no cadastro: ${e.message}');
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+      final userCredential = await _auth.signInWithCredential(credential);
+      await _createUserDocument(userCredential.user!);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      _showErrorSnackBar('Erro ao fazer login com Google: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _createUserDocument(User user) async {
+    final userDocRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final doc = await userDocRef.get();
+    if (!doc.exists) {
+      await userDocRef.set({
+        'email': user.email, 'uid': user.uid, 'displayName': user.displayName, 'photoURL': user.photoURL, 'role': 'user', 'favorites': [], 'createdAt': Timestamp.now(),
+      });
     }
   }
 
@@ -71,12 +109,21 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text('Acesse sua conta', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  icon: Image.asset('assets/google_logo.png', height: 24.0),
+                  label: const Text('Entrar com Google'),
+                  onPressed: _signInWithGoogle,
+                  style: ElevatedButton.styleFrom(foregroundColor: Colors.black, backgroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
+                ),
+                const SizedBox(height: 16),
+                const Text('OU'),
+                const SizedBox(height: 16),
                 TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'E-mail', border: OutlineInputBorder()), keyboardType: TextInputType.emailAddress, validator: (value) => value!.isEmpty ? 'Por favor, insira um e-mail' : null),
                 const SizedBox(height: 16),
                 TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Senha', border: OutlineInputBorder()), obscureText: true, validator: (value) => value!.length < 6 ? 'A senha deve ter no mínimo 6 caracteres' : null),
                 const SizedBox(height: 24),
-                if (_isLoading) const CircularProgressIndicator() else Column(children: [ SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _signIn, child: const Text('Entrar'))), const SizedBox(height: 16), SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _signUp, child: const Text('Não tenho conta, quero me cadastrar'))) ])
+                if (_isLoading) const CircularProgressIndicator() else Column(children: [ SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _signIn, child: const Text('Entrar com E-mail'))), const SizedBox(height: 16), SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _signUp, child: const Text('Não tenho conta, quero me cadastrar'))) ])
               ],
             ),
           ),
