@@ -1,10 +1,11 @@
 // =================================================================================
-// 3. ARQUIVO: lib/main.dart
+// 3. ARQUIVO: lib/main.dart (ATUALIZADO)
 // =================================================================================
-// (Sem alterações, apenas para referência)
+// Inicializa o SDK de anúncios.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Importa o SDK de anúncios
 import 'firebase_options.dart';
 import 'home_screen.dart';
 import 'app_colors.dart';
@@ -12,12 +13,13 @@ import 'app_colors.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Inicializa o SDK do Google Mobile Ads
+  MobileAds.instance.initialize();
   runApp(const MyApp());
 }
-
+// O resto do arquivo main.dart continua o mesmo...
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -39,7 +41,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
   Future<void> _signInAnonymously() async {

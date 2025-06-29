@@ -39,6 +39,7 @@ dependencies:
   any_link_preview: ^3.0.3
   url_launcher: ^6.3.0
   share_plus: ^9.0.0
+  google_mobile_ads: ^5.1.0
 
   cupertino_icons: ^1.0.6
  

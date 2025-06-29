@@ -1,16 +1,37 @@
-// 5. QUINTO PASSO: Substitua o conteúdo do seu arquivo lib/promotion_detail_screen.dart:
+// =================================================================================
+// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO)
+// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'app_colors.dart'; // Importa nosso arquivo de cores
+import 'app_colors.dart';
 
 class PromotionDetailScreen extends StatelessWidget {
   final Map<String, dynamic> promotionData;
   const PromotionDetailScreen({super.key, required this.promotionData});
 
-  Future<void> _launchURL(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw 'Could not launch $urlString';
+  // CORREÇÃO: Função mais robusta para abrir links
+  Future<void> _launchURL(BuildContext context, String urlString) async {
+    if (urlString.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum link disponível para esta promoção.')),
+      );
+      return;
+    }
+
+    // Adiciona http:// se não tiver um esquema, para garantir que seja uma URL válida
+    if (!urlString.toLowerCase().startsWith('http://') && !urlString.toLowerCase().startsWith('https://')) {
+      urlString = 'https://$urlString';
+    }
+
+    final Uri? url = Uri.tryParse(urlString);
+    if (url != null && await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Não foi possível abrir o link: $urlString')),
+        );
+      }
     }
   }
 
@@ -49,7 +70,7 @@ class PromotionDetailScreen extends StatelessWidget {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0), // Ajusta o padding
+              padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -65,7 +86,8 @@ class PromotionDetailScreen extends StatelessWidget {
                       child: ElevatedButton.icon(
                         icon: const Icon(Icons.link),
                         label: const Text('Abrir Link'),
-                        onPressed: () => _launchURL(link),
+                        // CORREÇÃO: Passando o context para a função
+                        onPressed: () => _launchURL(context, link),
                         style: ElevatedButton.styleFrom(
                           textStyle: const TextStyle(
                             fontSize: 18,

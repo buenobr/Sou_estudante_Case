@@ -1,10 +1,11 @@
 // =================================================================================
-// 5. ARQUIVO: lib/home_screen.dart (MUDANÇA CRÍTICA)
+// 4. ARQUIVO: lib/home_screen.dart (CORRIGIDO)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'login_screen.dart';
@@ -14,6 +15,8 @@ import 'app_colors.dart';
 import 'favorites_screen.dart';
 import 'admin_trash_screen.dart';
 import 'admin_approval_screen.dart';
+import 'settings_screen.dart';
+import 'ad_helper.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,11 +28,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Destaques';
   Stream<DocumentSnapshot>? _userDataStream;
   StreamSubscription<User?>? _authSubscription;
+  
+  final List<BannerAd?> _bannerAds = [];
+  final int _adInterval = 3; // MUDANÇA: Mostra um anúncio a cada 3 promoções
 
   @override
   void initState() {
     super.initState();
-    // Ouve as mudanças de autenticação para reconfigurar o stream de dados do usuário
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       _setupUserDataStream(user);
     });
@@ -38,9 +43,42 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    for (var ad in _bannerAds) {
+      ad?.dispose();
+    }
     super.dispose();
   }
 
+  void _loadBannerAd(int adIndex) {
+    if (adIndex >= _bannerAds.length || _bannerAds[adIndex] == null) {
+      if (_bannerAds.length <= adIndex) {
+        setState(() {
+          _bannerAds.addAll(List.filled(adIndex - _bannerAds.length + 1, null));
+        });
+      }
+
+      final banner = BannerAd(
+        adUnitId: AdHelper.bannerAdUnitId,
+        request: const AdRequest(),
+        size: AdSize.banner,
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            if (mounted) {
+              setState(() {
+                _bannerAds[adIndex] = ad as BannerAd;
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, err) {
+            debugPrint('BannerAd failed to load: $err');
+            ad.dispose();
+          },
+        ),
+      );
+      banner.load();
+    }
+  }
+  
   void _setupUserDataStream(User? user) {
     if (user != null && !user.isAnonymous) {
       setState(() {
@@ -52,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
   Future<void> _moveToTrash(BuildContext context, String docId) async {
     final bool? confirm = await showDialog(context: context, builder: (context) => AlertDialog(title: const Text('Mover para Lixeira'), content: const Text('Tem certeza? A promoção ficará oculta para os usuários.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirmar'))]));
     if (confirm == true) {
@@ -63,11 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
   void _sharePromotion(String title, String link) {
     Share.share('Olha essa promoção que eu encontrei: $title\n\n$link');
   }
-
   void _toggleFavorite(String promoId) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
@@ -76,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
     userRef.get().then((doc) {
-      if (!doc.exists) return; // Não faz nada se o documento do usuário não existir
+      if (!doc.exists) return;
       final favorites = List<String>.from(doc.data()?['favorites'] ?? []);
       if (favorites.contains(promoId)) {
         userRef.update({'favorites': FieldValue.arrayRemove([promoId])});
@@ -85,20 +120,18 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
-
   Widget _buildUserMenu(User? user, DocumentSnapshot? userData) {
     if (user == null || user.isAnonymous) {
       return TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())), child: const Text('Login / Cadastrar', style: TextStyle(color: Colors.white)));
     }
-    
     final userRole = userData?['role'];
-
     return PopupMenuButton<String>(
       onSelected: (value) {
         if (value == 'sair') FirebaseAuth.instance.signOut();
         if (value == 'favoritos') Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesScreen()));
         if (value == 'lixeira') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminTrashScreen()));
         if (value == 'aprovar') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalScreen()));
+        if (value == 'configuracoes') Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(value: 'configuracoes', child: ListTile(leading: Icon(Icons.settings), title: Text('Configurações'))),
@@ -118,7 +151,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildFilterChips() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -146,12 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
           StreamBuilder<DocumentSnapshot>(
             stream: _userDataStream,
             builder: (context, snapshot) {
-              // Adicionamos uma verificação se o documento do usuário existe
-              if (snapshot.hasData && !snapshot.data!.exists && user != null && !user.isAnonymous) {
-                // Se o usuário está logado mas não tem doc, pode ser um loading ou erro.
-                // Aqui, apenas mostramos o menu anônimo para evitar crash.
-                return _buildUserMenu(null, null);
-              }
               return _buildUserMenu(user, snapshot.data);
             }
           )
@@ -165,7 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
             child: StreamBuilder<DocumentSnapshot>(
               stream: _userDataStream,
               builder: (context, userDataSnapshot) {
-                // CORREÇÃO: Verifica se o documento do usuário existe antes de ler os dados
                 final docExists = userDataSnapshot.hasData && userDataSnapshot.data!.exists;
                 final userFavorites = docExists ? List<String>.from(userDataSnapshot.data!['favorites'] ?? []) : <String>[];
                 final userRole = docExists ? userDataSnapshot.data!['role'] : null;
@@ -186,11 +211,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     if (!promoSnapshot.hasData || promoSnapshot.data!.docs.isEmpty) return const Center(child: Text('Nenhuma promoção encontrada.'));
                     final promotions = promoSnapshot.data!.docs;
+                    
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final int adCount = promotions.length ~/ _adInterval;
+                      if (_bannerAds.length < adCount) {
+                        for (int i = _bannerAds.length; i < adCount; i++) {
+                          _loadBannerAd(i);
+                        }
+                      }
+                    });
+                    
+                    final int adCount = promotions.length ~/ _adInterval;
+
                     return ListView.builder(
                       padding: const EdgeInsets.all(8.0),
-                      itemCount: promotions.length,
+                      itemCount: promotions.length + adCount,
                       itemBuilder: (context, index) {
-                        final promo = promotions[index];
+                        if (_adInterval > 0 && (index + 1) % (_adInterval + 1) == 0) {
+                          final adIndex = (index + 1) ~/ (_adInterval + 1) - 1;
+                          if (adIndex < _bannerAds.length) {
+                            final ad = _bannerAds[adIndex];
+                            if (ad != null) {
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                height: ad.size.height.toDouble(),
+                                child: AdWidget(ad: ad),
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        }
+
+                        final promoIndex = index - (index ~/ (_adInterval + 1));
+                        final promo = promotions[promoIndex];
                         final data = promo.data() as Map<String, dynamic>;
                         final String title = data['title'] ?? '';
                         final String link = data['link'] ?? '';
