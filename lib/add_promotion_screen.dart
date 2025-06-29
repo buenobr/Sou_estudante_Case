@@ -1,46 +1,93 @@
-// 4. QUARTO PASSO: Substitua o conteúdo do seu arquivo lib/add_promotion_screen.dart.
-// Ele foi ajustado para usar as cores do tema.
+// =================================================================================
+// 3. ARQUIVO: lib/add_promotion_screen.dart (ATUALIZADO)
+// =================================================================================
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:any_link_preview/any_link_preview.dart';
+import 'package:intl/intl.dart';
+
+class CurrencyPtBrInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+    String newText = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (newText.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+    double value = double.parse(newText) / 100;
+    final formatter = NumberFormat("#,##0.00", "pt_BR");
+    String formattedText = formatter.format(value);
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: formattedText.length),
+    );
+  }
+}
 
 class AddPromotionScreen extends StatefulWidget {
   const AddPromotionScreen({super.key});
-
   @override
   State<AddPromotionScreen> createState() => _AddPromotionScreenState();
 }
-
 class _AddPromotionScreenState extends State<AddPromotionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
   final _priceController = TextEditingController();
   final _descriptionController = TextEditingController();
-
   bool _isLoading = false;
   bool _isFetchingLink = false;
-
   File? _manualImageFile;
   String? _manualImageUrl;
   String? _autoFetchedImageUrl;
-
   String? _selectedCategory;
   final List<String> _categories = ['Software', 'Cursos', 'Produtos', 'Viagens'];
 
+  // CORREÇÃO: Função de validação de link mais robusta
+  String? _normalizeAndValidateUrl(String? url) {
+    if (url == null || url.isEmpty) {
+      return null;
+    }
+    String link = url.trim();
+    // Adiciona https:// se não tiver um protocolo
+    if (!link.toLowerCase().startsWith('http://') && !link.toLowerCase().startsWith('https://')) {
+      link = 'https://$link';
+    }
+    
+    // Tenta parsear a URL
+    final uri = Uri.tryParse(link);
+    
+    // Verifica se o parse foi bem-sucedido, se é uma URL absoluta, 
+    // se tem um host (domínio) e se o host contém pelo menos um ponto.
+    if (uri != null && uri.isAbsolute && uri.host.isNotEmpty && uri.host.contains('.')) {
+      return link;
+    }
+    
+    // Se qualquer verificação falhar, a URL é inválida
+    return null;
+  }
+
   Future<void> _fetchLinkPreview() async {
-    final link = _linkController.text.trim();
-    if (link.isEmpty || !link.startsWith('http')) {
+    final normalizedLink = _normalizeAndValidateUrl(_linkController.text);
+    if (normalizedLink == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, insira um link válido.')));
       return;
     }
+    
     setState(() { _isFetchingLink = true; _autoFetchedImageUrl = null; });
     try {
-      final metadata = await AnyLinkPreview.getMetadata(link: link);
+      final metadata = await AnyLinkPreview.getMetadata(link: normalizedLink);
       if (metadata != null) {
         setState(() {
           if (metadata.title != null) _titleController.text = metadata.title!;
@@ -81,14 +128,12 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione uma categoria.')));
       return;
     }
-
     setState(() => _isLoading = true);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() => _isLoading = false);
       return;
     }
-
     try {
       String? finalImageUrl;
       if (_manualImageFile != null) {
@@ -100,11 +145,15 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       } else {
         finalImageUrl = _autoFetchedImageUrl;
       }
+      final priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
+      final double priceValue = double.tryParse(priceString) ?? 0.0;
+      
+      final String finalLink = _normalizeAndValidateUrl(_linkController.text) ?? _linkController.text.trim();
 
       await FirebaseFirestore.instance.collection('promotions').add({
         'title': _titleController.text.trim(),
-        'link': _linkController.text.trim(),
-        'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+        'link': finalLink,
+        'price': priceValue,
         'category': _selectedCategory,
         'imageUrl': finalImageUrl,
         'description': _descriptionController.text.trim(),
@@ -112,7 +161,6 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         'createdAt': Timestamp.now(),
         'status': 'pending',
       });
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promoção enviada para aprovação!')));
         Navigator.of(context).pop();
@@ -138,9 +186,28 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(value: _selectedCategory, decoration: const InputDecoration(labelText: 'Categoria'), items: _categories.map((String category) => DropdownMenuItem<String>(value: category, child: Text(category))).toList(), onChanged: (newValue) => setState(() => _selectedCategory = newValue), validator: (value) => value == null ? 'Campo obrigatório' : null),
               const SizedBox(height: 16),
-              TextFormField(controller: _linkController, decoration: const InputDecoration(labelText: 'Link da Promoção'), validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
+              TextFormField(
+                controller: _linkController,
+                decoration: const InputDecoration(labelText: 'Link da Promoção'),
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (_normalizeAndValidateUrl(value) == null) {
+                    return 'Por favor, insira um link válido';
+                  }
+                  return null;
+                },
+              ),
               Align(alignment: Alignment.centerRight, child: TextButton.icon(icon: const Icon(Icons.search, size: 20), label: const Text('Buscar dados do link'), onPressed: _fetchLinkPreview)),
-              TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Preço (ex: 99.90)'), keyboardType: TextInputType.number, validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
+              TextFormField(
+                controller: _priceController,
+                decoration: const InputDecoration(labelText: 'Preço', border: OutlineInputBorder(), prefixText: 'R\$ '),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  CurrencyPtBrInputFormatter(),
+                ],
+                validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
+              ),
               const SizedBox(height: 16),
               TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição (opcional)', border: OutlineInputBorder()), maxLines: 4),
               const SizedBox(height: 24),
@@ -156,7 +223,6 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       ),
     );
   }
-
   Widget _buildImageWidget() {
     if (_manualImageFile != null) return Image.file(_manualImageFile!, fit: BoxFit.cover);
     if (_manualImageUrl != null) return Image.network(_manualImageUrl!, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const Center(child: Text('Erro ao carregar imagem.')));

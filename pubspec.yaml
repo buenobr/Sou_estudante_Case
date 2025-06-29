@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations: #
+    sdk: flutter
   
   firebase_core: ^2.32.0 
   firebase_auth: ^4.20.0
@@ -42,6 +44,7 @@ dependencies:
   google_mobile_ads: ^5.1.0
 
   cupertino_icons: ^1.0.6
+
  
 
 dev_dependencies:
