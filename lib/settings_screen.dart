@@ -1,5 +1,5 @@
 // =================================================================================
-// 6. ARQUIVO: lib/settings_screen.dart (ATUALIZADO COM BANNER)
+// ARQUIVO 2: lib/settings_screen.dart (ALTERADO)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,6 +20,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   BannerAd? _bannerAd;
+
+  // Variáveis de estado para cada campo de senha
+  bool _isCurrentPasswordVisible = false;
+  bool _isNewPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   @override
   void initState() {
@@ -49,6 +54,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
     setState(() => _isLoading = true);
     final user = FirebaseAuth.instance.currentUser;
     final cred = EmailAuthProvider.credential(email: user!.email!, password: _currentPasswordController.text.trim());
@@ -56,15 +63,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await user.reauthenticateWithCredential(cred);
       await user.updatePassword(_newPasswordController.text.trim());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Senha alterada com sucesso!'), backgroundColor: Colors.green));
-        Navigator.of(context).pop();
+        scaffoldMessenger.showSnackBar(const SnackBar(content: Text('Senha alterada com sucesso!'), backgroundColor: Colors.green));
+        navigator.pop();
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao alterar senha: ${e.message}'), backgroundColor: Colors.red));
+        scaffoldMessenger.showSnackBar(SnackBar(content: Text('Erro ao alterar senha: ${e.message}'), backgroundColor: Colors.red));
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -83,11 +92,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     const Text('Alterar Senha', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
-                    TextFormField(controller: _currentPasswordController, decoration: const InputDecoration(labelText: 'Senha Atual', border: OutlineInputBorder()), obscureText: true, validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
+                    TextFormField(
+                      controller: _currentPasswordController,
+                      obscureText: !_isCurrentPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: 'Senha Atual',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(_isCurrentPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _isCurrentPasswordVisible = !_isCurrentPasswordVisible),
+                        ),
+                      ),
+                      validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null,
+                    ),
                     const SizedBox(height: 16),
-                    TextFormField(controller: _newPasswordController, decoration: const InputDecoration(labelText: 'Nova Senha', border: OutlineInputBorder()), obscureText: true, validator: (value) => (value == null || value.length < 6) ? 'A nova senha deve ter no mínimo 6 caracteres' : null),
+                    TextFormField(
+                      controller: _newPasswordController,
+                      obscureText: !_isNewPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: 'Nova Senha',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(_isNewPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _isNewPasswordVisible = !_isNewPasswordVisible),
+                        ),
+                      ),
+                      validator: (value) => (value == null || value.length < 6) ? 'A nova senha deve ter no mínimo 6 caracteres' : null,
+                    ),
                     const SizedBox(height: 16),
-                    TextFormField(controller: _confirmPasswordController, decoration: const InputDecoration(labelText: 'Confirmar Nova Senha', border: OutlineInputBorder()), obscureText: true, validator: (value) => (value != _newPasswordController.text) ? 'As senhas não coincidem' : null),
+                    TextFormField(
+                      controller: _confirmPasswordController,
+                      obscureText: !_isConfirmPasswordVisible,
+                      decoration: InputDecoration(
+                        labelText: 'Confirmar Nova Senha',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                          onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                        ),
+                      ),
+                      validator: (value) => (value != _newPasswordController.text) ? 'As senhas não coincidem' : null,
+                    ),
                     const SizedBox(height: 32),
                     if (_isLoading) const Center(child: CircularProgressIndicator()) else ElevatedButton(onPressed: _changePassword, child: const Text('Salvar Alterações')),
                   ],

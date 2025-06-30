@@ -1,8 +1,6 @@
 // =================================================================================
-// ARQUIVO 2: lib/login_screen.dart
+// ARQUIVO 1: lib/login_screen.dart (ALTERADO)
 // =================================================================================
-// Copie e cole todo este conteúdo no seu arquivo lib/login_screen.dart,
-// substituindo tudo que está lá.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -19,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+  // NOVO: Variável de estado para controlar a visibilidade da senha
+  bool _isPasswordVisible = false;
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.red));
@@ -111,7 +111,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text('Acesse sua conta', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  // MUDANÇA: Voltamos a usar a imagem da pasta assets
                   icon: Image.asset('assets/google_logo.png', height: 24.0),
                   label: const Text('Entrar com Google'),
                   onPressed: _signInWithGoogle,
@@ -125,7 +124,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'E-mail', border: OutlineInputBorder()), keyboardType: TextInputType.emailAddress, validator: (value) => value!.isEmpty ? 'Por favor, insira um e-mail' : null),
                 const SizedBox(height: 16),
-                TextFormField(controller: _passwordController, decoration: const InputDecoration(labelText: 'Senha', border: OutlineInputBorder()), obscureText: true, validator: (value) => value!.length < 6 ? 'A senha deve ter no mínimo 6 caracteres' : null),
+                // CAMPO DE SENHA ATUALIZADO
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: !_isPasswordVisible, // Usa a variável de estado
+                  decoration: InputDecoration(
+                    labelText: 'Senha',
+                    border: const OutlineInputBorder(),
+                    // Adiciona o ícone do olho
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        // Inverte o estado da visibilidade
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                    ),
+                  ),
+                  validator: (value) => value!.length < 6 ? 'A senha deve ter no mínimo 6 caracteres' : null,
+                ),
                 const SizedBox(height: 24),
                 if (_isLoading) const CircularProgressIndicator() else Column(children: [ SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _signIn, child: const Text('Entrar com E-mail'))), const SizedBox(height: 16), SizedBox(width: double.infinity, child: OutlinedButton(onPressed: _signUp, child: const Text('Não tenho conta, quero me cadastrar'))) ])
               ],
