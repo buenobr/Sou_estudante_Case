@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 2: lib/add_promotion_screen.dart (VERSÃO CORRIGIDA)
+// ARQUIVO 2: lib/add_promotion_screen.dart (VERSÃO CORRIGIDA PARA TELA DE SUCESSO)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:any_link_preview/any_link_preview.dart';
+
+import 'promotion_submitted_screen.dart'; // <--- NOVO IMPORT: Tela de sucesso
 
 class CurrencyPtBrInputFormatter extends TextInputFormatter {
   @override
@@ -120,8 +122,10 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         'status': 'pending',
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promoção enviada para aprovação!')));
-        Navigator.of(context).pop();
+        // Redireciona para a nova tela de sucesso
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const PromotionSubmittedScreen()),
+        );
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao enviar promoção: $e')));
