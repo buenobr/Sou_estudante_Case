@@ -35,8 +35,37 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
   assets:
     - assets/
+
+# >>> ADICIONE ESTE BLOCO ABAIXO, NO MESMO NÍVEL DE "name:", "environment:", etc. <<<
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png" # Usado para ícones legados e outras plataformas (web, windows, linux)
+
+  # NOVO: Configurações para Ícones Adaptativos no Android
+  adaptive_icon_background: "#4A148C" # Cor de fundo (DeepPurple da sua AppColors)
+  adaptive_icon_foreground: "assets/app_icon.png" # Sua imagem principal será o primeiro plano
+
+  remove_alpha_ios: true # Recomendado para App Store
+
+  # Configuração para Web
+  web:
+    generate: true
+    image_path: "assets/app_icon.png"
+    background_color: "#4A148C" # Para o web também, use a mesma cor de fundo
+    theme_color: "#4A148C"      # E a cor do tema
+
+  # Configuração para Windows e Linux
+  windows:
+    generate: true
+    image_path: "assets/app_icon.png"
+    icon_size: 48
+  linux:
+    generate: true
+    image_path: "assets/app_icon.png"

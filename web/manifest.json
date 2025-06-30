@@ -1,10 +1,10 @@
 {
-    "name": "Sou Estudante",
-    "short_name": "Sou Estudante"
+    "name": "sou_estudante",
+    "short_name": "sou_estudante",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
+    "background_color": "#4A148C",
+    "theme_color": "#4A148C",
     "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
