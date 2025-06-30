@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO com Busca em Tempo Real)
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Cor do Texto dos Chips no Tema Escuro)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -34,11 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<BannerAd?> _bannerAds = [];
   final int _adInterval = 3;
 
-  // NOVO: Variáveis para a busca
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  Timer? _debounce; // Para atrasar a busca e evitar muitas consultas ao Firestore
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -47,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _setupUserDataStream(user);
     });
 
-    // NOVO: Listener para o campo de busca
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -57,13 +55,12 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var ad in _bannerAds) {
       ad?.dispose();
     }
-    _searchController.removeListener(_onSearchChanged); // NOVO
-    _searchController.dispose(); // NOVO
-    _debounce?.cancel(); // NOVO
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
-  // NOVO: Lógica de debounce para a busca
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -183,6 +180,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   Widget _buildFilterChips() {
+    // NOVO: Obtém o brilho atual do tema
+    final Brightness brightness = Theme.of(context).brightness;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       height: 50,
@@ -193,7 +193,22 @@ class _HomeScreenState extends State<HomeScreen> {
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final filter = _filters[index];
-          return ChoiceChip(label: Text(filter), selected: _selectedFilter == filter, onSelected: (selected) { if (selected) setState(() => _selectedFilter = filter); }, selectedColor: AppColors.primary, labelStyle: TextStyle(color: _selectedFilter == filter ? Colors.white : Colors.black));
+          return ChoiceChip(
+            label: Text(filter),
+            selected: _selectedFilter == filter,
+            onSelected: (selected) {
+              if (selected) {
+                setState(() => _selectedFilter = filter);
+              }
+            },
+            selectedColor: AppColors.primary,
+            // CORREÇÃO AQUI: Cor do texto baseada no tema
+            labelStyle: TextStyle(
+              color: _selectedFilter == filter
+                  ? Colors.white // Texto branco para chip selecionado (fundo primary)
+                  : (brightness == Brightness.dark ? Colors.white : Colors.black), // Texto branco no tema escuro, preto no claro
+            ),
+          );
         },
       ),
     );
@@ -204,7 +219,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
-        // NOVO: Título dinâmico ou campo de busca
         title: _isSearching
             ? TextField(
                 controller: _searchController,
@@ -228,7 +242,6 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : const Text('Promoções'),
         actions: [
-          // NOVO: Botão de busca
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
             onPressed: () {
@@ -267,15 +280,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (_selectedFilter != 'Destaques') {
                       query = query.where('category', isEqualTo: _selectedFilter);
                     }
-                    // NOVO: Adiciona filtro de busca se houver uma query
-                    if (_searchQuery.isNotEmpty) {
-                      // Para busca em tempo real, Firebase não suporta busca "contém" diretamente
-                      // Para soluções mais robustas:
-                      // 1. Usar um serviço de busca como Algolia ou ElasticSearch.
-                      // 2. Implementar busca por prefixo (startAt/endAt).
-                      // Por enquanto, vamos filtrar no cliente para demonstrar.
-                      // Se a lista de promoções for muito grande, isso pode não ser performático.
-                    }
                     return query.orderBy('createdAt', descending: true).snapshots();
                   }(),
                   builder: (context, promoSnapshot) {
@@ -286,7 +290,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                     if (!promoSnapshot.hasData || promoSnapshot.data!.docs.isEmpty) return const Center(child: Text('Nenhuma promoção encontrada.'));
                     
-                    // NOVO: Filtragem local após receber os dados do Firestore
                     var promotions = promoSnapshot.data!.docs;
                     if (_searchQuery.isNotEmpty) {
                       promotions = promotions.where((promo) {
@@ -299,7 +302,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       }).toList();
                     }
 
-                    // Se não houver promoções após a filtragem
                     if (promotions.isEmpty && _searchQuery.isNotEmpty) {
                       return const Center(child: Text('Nenhuma promoção encontrada para sua busca.'));
                     } else if (promotions.isEmpty) {
