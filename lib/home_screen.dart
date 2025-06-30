@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Cor do Texto dos Chips no Tema Escuro)
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Dois 'X' na busca)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -180,7 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   Widget _buildFilterChips() {
-    // NOVO: Obtém o brilho atual do tema
     final Brightness brightness = Theme.of(context).brightness;
 
     return Container(
@@ -202,11 +201,10 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             selectedColor: AppColors.primary,
-            // CORREÇÃO AQUI: Cor do texto baseada no tema
             labelStyle: TextStyle(
               color: _selectedFilter == filter
-                  ? Colors.white // Texto branco para chip selecionado (fundo primary)
-                  : (brightness == Brightness.dark ? Colors.white : Colors.black), // Texto branco no tema escuro, preto no claro
+                  ? Colors.white
+                  : (brightness == Brightness.dark ? Colors.white : Colors.black),
             ),
           );
         },
@@ -230,6 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear, color: Colors.white),
                     onPressed: () {
+                      // Limpa a busca e desativa o modo de busca
                       _searchController.clear();
                       setState(() {
                         _searchQuery = '';
@@ -242,18 +241,16 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : const Text('Promoções'),
         actions: [
-          IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) {
-                  _searchController.clear();
-                  _searchQuery = '';
-                }
-              });
-            },
-          ),
+          // CORREÇÃO AQUI: O botão de busca só aparece se NÃO estiver no modo de busca
+          if (!_isSearching)
+            IconButton(
+              icon: const Icon(Icons.search), // Apenas a lupa quando não está buscando
+              onPressed: () {
+                setState(() {
+                  _isSearching = true; // Ativa o modo de busca
+                });
+              },
+            ),
           StreamBuilder<DocumentSnapshot>(
             stream: _userDataStream,
             builder: (context, snapshot) {

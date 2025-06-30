@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 3: lib/main.dart (VERSÃO FINAL ATUALIZADA COM TEMA)
+// ARQUIVO 3: lib/main.dart (ATUALIZADO PARA DEBUG DO ADMOB)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,11 +19,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Intl.defaultLocale = 'pt_BR';
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  MobileAds.instance.initialize();
-  
+
+  // NOVO: Adicione .then() e .catchError() para depurar a inicialização do AdMob
+  await MobileAds.instance.initialize().then((InitializationStatus status) {
+    debugPrint('AdMob inicializado com sucesso: $status');
+  }).catchError((e) {
+    debugPrint('Erro ao inicializar AdMob: $e');
+  });
+
   runApp(
-    ChangeNotifierProvider<ThemeManager>( // Fornece a instância do ThemeManager
-      create: (_) => ThemeManager(), // Cria uma nova instância de ThemeManager
+    ChangeNotifierProvider<ThemeManager>(
+      create: (_) => ThemeManager(),
       child: const MyApp(),
     ),
   );
@@ -46,7 +52,7 @@ class MyApp extends StatelessWidget {
       supportedLocales: const [
         Locale('pt', 'BR'),
       ],
-      theme: ThemeData( // Tema Claro
+      theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         useMaterial3: true,
         appBarTheme: const AppBarTheme(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
@@ -59,7 +65,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      darkTheme: ThemeData( // Tema Escuro
+      darkTheme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
@@ -83,7 +89,7 @@ class MyApp extends StatelessWidget {
           labelLarge: TextStyle(color: Colors.white.withOpacity(0.9)),
         ),
       ),
-      themeMode: themeManager.themeMode, // Define o tema atual
+      themeMode: themeManager.themeMode,
       home: const AuthGate(),
     );
   }
