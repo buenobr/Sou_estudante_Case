@@ -1,12 +1,9 @@
 // =================================================================================
-// ARQUIVO 2: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA)
+// ARQUIVO 4: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA)
 // =================================================================================
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'add_promotion_screen.dart'; // Reutiliza o formatador de moeda
 
@@ -27,7 +24,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
 
-  File? _manualImageFile;
   String? _manualImageUrl;
   String? _currentImageUrl;
 
@@ -62,25 +58,13 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     }
   }
 
-  Future<void> _pickImageFromGallery() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _manualImageFile = File(pickedFile.path);
-        _manualImageUrl = null;
-        _currentImageUrl = null; // Remove a imagem atual para dar lugar à nova
-      });
-    }
-  }
-
   Future<void> _showImageUrlDialog() async {
-    final urlController = TextEditingController();
+    final urlController = TextEditingController(text: _manualImageUrl ?? _currentImageUrl);
     final result = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: const Text('Adicionar URL da Imagem'), content: TextField(controller: urlController, decoration: const InputDecoration(hintText: 'https://...'), autofocus: true), actions: [ TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.of(context).pop(urlController.text.trim()), child: const Text('Confirmar')) ]));
     if (result != null && result.isNotEmpty) {
       setState(() {
         _manualImageUrl = result;
-        _manualImageFile = null;
-        _currentImageUrl = null; // Remove a imagem atual para dar lugar à nova
+        _currentImageUrl = null;
       });
     }
   }
@@ -90,16 +74,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     setState(() => _isSaving = true);
 
     try {
-      String? finalImageUrl = _currentImageUrl;
-      
-      if (_manualImageFile != null) {
-        final ref = FirebaseStorage.instance.ref().child('promotion_images').child('${DateTime.now().toIso8601String()}.jpg');
-        await ref.putFile(_manualImageFile!);
-        finalImageUrl = await ref.getDownloadURL();
-      } else if (_manualImageUrl != null) {
-        finalImageUrl = _manualImageUrl;
-      }
-
+      String? finalImageUrl = _manualImageUrl ?? _currentImageUrl;
       final priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
       final double priceValue = double.tryParse(priceString) ?? 0.0;
 
@@ -148,7 +123,7 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                     const Text('Imagem Principal', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Container(height: 200, width: double.infinity, decoration: BoxDecoration(border: Border.all(color: Colors.grey)), child: _buildImageWidget()),
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [ TextButton.icon(icon: const Icon(Icons.photo_library), label: const Text('Galeria'), onPressed: _pickImageFromGallery), TextButton.icon(icon: const Icon(Icons.link), label: const Text('URL'), onPressed: _showImageUrlDialog) ]),
+                    Center(child: TextButton.icon(icon: const Icon(Icons.link), label: const Text('Adicionar/Alterar Imagem por URL'), onPressed: _showImageUrlDialog)),
                     const SizedBox(height: 32),
                     if (_isSaving) const Center(child: CircularProgressIndicator()) else ElevatedButton(onPressed: _updatePromotion, child: const Text('Salvar Alterações')),
                   ],
@@ -159,7 +134,6 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   }
 
   Widget _buildImageWidget() {
-    if (_manualImageFile != null) return Image.file(_manualImageFile!, fit: BoxFit.cover);
     if (_manualImageUrl != null) return Image.network(_manualImageUrl!, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Center(child: Text('Erro')));
     if (_currentImageUrl != null) return Image.network(_currentImageUrl!, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Center(child: Text('Erro')));
     return const Center(child: Text('Nenhuma imagem.'));
