@@ -1,7 +1,6 @@
 // =================================================================================
-// ARQUIVO 2: lib/main.dart (ATUALIZADO)
+// ARQUIVO 3: lib/main.dart
 // =================================================================================
-// AuthGate agora usa o stream 'userChanges' para detectar a verificação do e-mail.
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -67,9 +66,6 @@ class AuthGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      // MUDANÇA: Usando 'userChanges()' em vez de 'authStateChanges()'.
-      // Este stream é mais sensível e detecta mudanças no estado do usuário,
-      // como a verificação de e-mail.
       stream: FirebaseAuth.instance.userChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

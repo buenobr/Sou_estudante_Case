@@ -1,10 +1,11 @@
 // =================================================================================
-// ARQUIVO 4: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA)
+// ARQUIVO 3: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'add_promotion_screen.dart'; // Reutiliza o formatador de moeda
 
 class EditPromotionScreen extends StatefulWidget {
@@ -55,6 +56,14 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _launchURL(String urlString) async {
+    if (urlString.isEmpty) return;
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Não foi possível abrir o link $urlString')));
     }
   }
 
@@ -114,7 +123,17 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(value: _selectedCategory, decoration: const InputDecoration(labelText: 'Categoria'), items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(), onChanged: (v) => setState(() => _selectedCategory = v), validator: (v) => v == null ? 'Obrigatório' : null),
                     const SizedBox(height: 16),
-                    TextFormField(controller: _linkController, decoration: const InputDecoration(labelText: 'Link'), validator: (v) => v!.isEmpty ? 'Obrigatório' : null),
+                    TextFormField(
+                      controller: _linkController,
+                      decoration: InputDecoration(
+                        labelText: 'Link',
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.open_in_new),
+                          onPressed: () => _launchURL(_linkController.text),
+                        ),
+                      ),
+                      validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                    ),
                     const SizedBox(height: 16),
                     TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Preço', prefixText: 'R\$ '), keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyPtBrInputFormatter()], validator: (v) => v!.isEmpty ? 'Obrigatório' : null),
                     const SizedBox(height: 16),

@@ -1,7 +1,8 @@
 // =================================================================================
-// ARQUIVO 3: lib/login_screen.dart (ATUALIZADO)
+// ARQUIVO 2: lib/login_screen.dart
 // =================================================================================
-// O método de cadastro agora envia o e-mail de verificação.
+// Copie e cole todo este conteúdo no seu arquivo lib/login_screen.dart,
+// substituindo tudo que está lá.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,7 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await _auth.signInWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
-      // A lógica do AuthGate vai direcionar para a tela certa (verificação ou home)
       if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar('Erro no login: ${e.message}');
@@ -41,23 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // 1. Cria o usuário
       final userCredential = await _auth.createUserWithEmailAndPassword(email: _emailController.text.trim(), password: _passwordController.text.trim());
-      
-      // 2. Envia o e-mail de verificação
-      await userCredential.user?.sendEmailVerification();
-      
-      // 3. Cria o documento do usuário no Firestore
       await _createUserDocument(userCredential.user!);
-
-      // 4. Mostra uma mensagem de sucesso e fecha a tela de login.
-      // O AuthGate vai direcionar para a tela de verificação.
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conta criada! Verifique seu e-mail para continuar.'), backgroundColor: Colors.green),
-        );
-        Navigator.of(context).pop();
-      }
+      if (mounted) Navigator.of(context).pop();
     } on FirebaseAuthException catch (e) {
       _showErrorSnackBar('Erro no cadastro: ${e.message}');
     } finally {
@@ -69,15 +55,23 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut();
+      
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
         setState(() => _isLoading = false);
         return;
       }
+      
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
       final userCredential = await _auth.signInWithCredential(credential);
       await _createUserDocument(userCredential.user!);
+
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       _showErrorSnackBar('Erro ao fazer login com Google: ${e.toString()}');
@@ -91,7 +85,13 @@ class _LoginScreenState extends State<LoginScreen> {
     final doc = await userDocRef.get();
     if (!doc.exists) {
       await userDocRef.set({
-        'email': user.email, 'uid': user.uid, 'displayName': user.displayName, 'photoURL': user.photoURL, 'role': 'user', 'favorites': [], 'createdAt': Timestamp.now(),
+        'email': user.email,
+        'uid': user.uid,
+        'displayName': user.displayName,
+        'photoURL': user.photoURL,
+        'role': 'user',
+        'favorites': [],
+        'createdAt': Timestamp.now(),
       });
     }
   }
@@ -111,10 +111,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text('Acesse sua conta', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
+                  // MUDANÇA: Voltamos a usar a imagem da pasta assets
                   icon: Image.asset('assets/google_logo.png', height: 24.0),
                   label: const Text('Entrar com Google'),
                   onPressed: _signInWithGoogle,
-                  style: ElevatedButton.styleFrom(foregroundColor: Colors.black, backgroundColor: Colors.white, minimumSize: const Size(double.infinity, 50)),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.black, backgroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text('OU'),

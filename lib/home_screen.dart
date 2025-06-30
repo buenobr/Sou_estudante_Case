@@ -1,11 +1,11 @@
 // =================================================================================
-// 5. ARQUIVO: lib/home_screen.dart (ATUALIZADO)
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO)
 // =================================================================================
-// Adiciona o novo item no menu do admin.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'login_screen.dart';
@@ -16,7 +16,8 @@ import 'favorites_screen.dart';
 import 'admin_trash_screen.dart';
 import 'admin_approval_screen.dart';
 import 'settings_screen.dart';
-import 'admin_user_management_screen.dart'; // Importa a nova tela
+import 'ad_helper.dart';
+import 'admin_user_management_screen.dart'; // <-- IMPORT ADICIONADO
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +29,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Destaques';
   Stream<DocumentSnapshot>? _userDataStream;
   StreamSubscription<User?>? _authSubscription;
+  
+  final List<BannerAd?> _bannerAds = [];
+  final int _adInterval = 3;
 
   @override
   void initState() {
@@ -40,9 +44,42 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    for (var ad in _bannerAds) {
+      ad?.dispose();
+    }
     super.dispose();
   }
 
+  void _loadBannerAd(int adIndex) {
+    if (adIndex >= _bannerAds.length || _bannerAds[adIndex] == null) {
+      if (_bannerAds.length <= adIndex) {
+        setState(() {
+          _bannerAds.addAll(List.filled(adIndex - _bannerAds.length + 1, null));
+        });
+      }
+
+      final banner = BannerAd(
+        adUnitId: AdHelper.bannerAdUnitId,
+        request: const AdRequest(),
+        size: AdSize.banner,
+        listener: BannerAdListener(
+          onAdLoaded: (ad) {
+            if (mounted) {
+              setState(() {
+                _bannerAds[adIndex] = ad as BannerAd;
+              });
+            }
+          },
+          onAdFailedToLoad: (ad, err) {
+            debugPrint('BannerAd failed to load: $err');
+            ad.dispose();
+          },
+        ),
+      );
+      banner.load();
+    }
+  }
+  
   void _setupUserDataStream(User? user) {
     if (user != null && !user.isAnonymous) {
       setState(() {
@@ -54,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
   Future<void> _moveToTrash(BuildContext context, String docId) async {
     final bool? confirm = await showDialog(context: context, builder: (context) => AlertDialog(title: const Text('Mover para Lixeira'), content: const Text('Tem certeza? A promoção ficará oculta para os usuários.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirmar'))]));
     if (confirm == true) {
@@ -65,11 +101,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
   }
-
   void _sharePromotion(String title, String link) {
     Share.share('Olha essa promoção que eu encontrei: $title\n\n$link');
   }
-
   void _toggleFavorite(String promoId) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
@@ -87,43 +121,27 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
-
   Widget _buildUserMenu(User? user, DocumentSnapshot? userData) {
     if (user == null || user.isAnonymous) {
       return TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())), child: const Text('Login / Cadastrar', style: TextStyle(color: Colors.white)));
     }
-    
     final userRole = userData?['role'];
-
     return PopupMenuButton<String>(
       onSelected: (value) {
         if (value == 'sair') FirebaseAuth.instance.signOut();
         if (value == 'favoritos') Navigator.push(context, MaterialPageRoute(builder: (context) => const FavoritesScreen()));
-        if (value == 'configuracoes') Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
-        // Navegação para as telas de admin
-        if (value == 'aprovar') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalScreen()));
         if (value == 'lixeira') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminTrashScreen()));
+        if (value == 'aprovar') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalScreen()));
+        if (value == 'configuracoes') Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
         if (value == 'gerenciar_usuarios') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminUserManagementScreen()));
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(value: 'configuracoes', child: ListTile(leading: Icon(Icons.settings), title: Text('Configurações'))),
         const PopupMenuItem<String>(value: 'favoritos', child: ListTile(leading: Icon(Icons.favorite), title: Text('Favoritos'))),
         if (userRole == 'admin') const PopupMenuDivider(),
-        if (userRole == 'admin')
-          const PopupMenuItem<String>(
-            value: 'aprovar',
-            child: ListTile(leading: Icon(Icons.playlist_add_check, color: AppColors.price), title: Text('Aprovar Promoções', style: TextStyle(color: AppColors.price))),
-          ),
-        if (userRole == 'admin')
-          const PopupMenuItem<String>(
-            value: 'gerenciar_usuarios', // NOVO ITEM
-            child: ListTile(leading: Icon(Icons.people, color: AppColors.primary), title: Text('Gerenciar Usuários', style: TextStyle(color: AppColors.primary))),
-          ),
-        if (userRole == 'admin')
-          const PopupMenuItem<String>(
-            value: 'lixeira',
-            child: ListTile(leading: Icon(Icons.delete_sweep, color: AppColors.danger), title: Text('Lixeira', style: TextStyle(color: AppColors.danger))),
-          ),
+        if (userRole == 'admin') const PopupMenuItem<String>(value: 'aprovar', child: ListTile(leading: Icon(Icons.playlist_add_check, color: AppColors.price), title: Text('Aprovar Promoções', style: TextStyle(color: AppColors.price)))),
+        if (userRole == 'admin') const PopupMenuItem<String>(value: 'gerenciar_usuarios', child: ListTile(leading: Icon(Icons.people, color: AppColors.primary), title: Text('Gerenciar Usuários', style: TextStyle(color: AppColors.primary)))),
+        if (userRole == 'admin') const PopupMenuItem<String>(value: 'lixeira', child: ListTile(leading: Icon(Icons.delete_sweep, color: AppColors.danger), title: Text('Lixeira', style: TextStyle(color: AppColors.danger)))),
         const PopupMenuDivider(),
         const PopupMenuItem<String>(value: 'sair', child: ListTile(leading: Icon(Icons.exit_to_app), title: Text('Sair'))),
       ],
@@ -137,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildFilterChips() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -199,11 +216,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (!promoSnapshot.hasData || promoSnapshot.data!.docs.isEmpty) return const Center(child: Text('Nenhuma promoção encontrada.'));
                     final promotions = promoSnapshot.data!.docs;
                     
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      final int adCount = promotions.length ~/ _adInterval;
+                      if (_bannerAds.length < adCount) {
+                        for (int i = _bannerAds.length; i < adCount; i++) {
+                          _loadBannerAd(i);
+                        }
+                      }
+                    });
+                    
+                    final int adCount = promotions.length ~/ _adInterval;
+
                     return ListView.builder(
                       padding: const EdgeInsets.all(8.0),
-                      itemCount: promotions.length,
+                      itemCount: promotions.length + adCount,
                       itemBuilder: (context, index) {
-                        final promo = promotions[index];
+                        if (_adInterval > 0 && (index + 1) % (_adInterval + 1) == 0) {
+                          final adIndex = (index + 1) ~/ (_adInterval + 1) - 1;
+                          if (adIndex < _bannerAds.length) {
+                            final ad = _bannerAds[adIndex];
+                            if (ad != null) {
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                                height: ad.size.height.toDouble(),
+                                child: AdWidget(ad: ad),
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        }
+
+                        final promoIndex = index - (index ~/ (_adInterval + 1));
+                        final promo = promotions[promoIndex];
                         final data = promo.data() as Map<String, dynamic>;
                         final String title = data['title'] ?? '';
                         final String link = data['link'] ?? '';
