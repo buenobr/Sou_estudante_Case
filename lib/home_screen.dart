@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Dois 'X' na busca)
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Preço "Grátis")
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -228,7 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.clear, color: Colors.white),
                     onPressed: () {
-                      // Limpa a busca e desativa o modo de busca
                       _searchController.clear();
                       setState(() {
                         _searchQuery = '';
@@ -241,13 +240,12 @@ class _HomeScreenState extends State<HomeScreen> {
               )
             : const Text('Promoções'),
         actions: [
-          // CORREÇÃO AQUI: O botão de busca só aparece se NÃO estiver no modo de busca
           if (!_isSearching)
             IconButton(
-              icon: const Icon(Icons.search), // Apenas a lupa quando não está buscando
+              icon: const Icon(Icons.search),
               onPressed: () {
                 setState(() {
-                  _isSearching = true; // Ativa o modo de busca
+                  _isSearching = true;
                 });
               },
             ),
@@ -346,6 +344,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         final bool isFavorited = userFavorites.contains(promo.id);
                         final int likesCount = (data['likedBy'] as List<dynamic>?)?.length ?? 0;
 
+                        // NOVO: Formato do preço
+                        String priceText = '';
+                        if (price == 0.0) {
+                          priceText = 'Grátis';
+                        } else {
+                          priceText = 'R\$ ${price.toStringAsFixed(2)}';
+                        }
+
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
                           elevation: 2,
@@ -360,7 +366,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(height: 4),
                                   Text(category, style: const TextStyle(color: AppColors.primary, fontSize: 12)),
                                   const SizedBox(height: 4),
-                                  Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)),
+                                  Text(priceText, style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)), // USANDO priceText
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [

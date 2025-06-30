@@ -1,5 +1,5 @@
 // =================================================================================
-// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO PARA LIKES/DISLIKES/REPORT)
+// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO COM PREÇO "GRÁTIS")
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 
 import 'app_colors.dart';
-import 'report_problem_screen.dart'; // Importa a nova tela de reportar
+import 'report_problem_screen.dart';
 
 class PromotionDetailScreen extends StatefulWidget {
   final Map<String, dynamic> promotionData;
@@ -24,7 +24,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Variáveis de estado para likes e dislikes
   int _likes = 0;
   int _dislikes = 0;
   bool _isLiked = false;
@@ -36,7 +35,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
     _loadReactionStatus();
   }
 
-  // Carrega o status de likes/dislikes do usuário atual e as contagens totais
   Future<void> _loadReactionStatus() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -69,7 +67,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
 
     final promoRef = _firestore.collection('promotions').doc(widget.promotionId);
 
-    // Transação para garantir atomicidade das operações de like/dislike
     _firestore.runTransaction((transaction) async {
       final freshPromoDoc = await transaction.get(promoRef);
       if (!freshPromoDoc.exists) return;
@@ -79,14 +76,11 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
 
       if (isLike) {
         if (currentLikedBy.contains(user.uid)) {
-          // Já curtiu, então remove o like
           currentLikedBy.remove(user.uid);
           _isLiked = false;
         } else {
-          // Não curtiu, adiciona o like
           currentLikedBy.add(user.uid);
           _isLiked = true;
-          // Se estava disliked, remove o dislike
           if (currentDislikedBy.contains(user.uid)) {
             currentDislikedBy.remove(user.uid);
             _isDisliked = false;
@@ -94,14 +88,11 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
         }
       } else { // isDislike
         if (currentDislikedBy.contains(user.uid)) {
-          // Já descurtiu, remove o dislike
           currentDislikedBy.remove(user.uid);
           _isDisliked = false;
         } else {
-          // Não descurtiu, adiciona o dislike
           currentDislikedBy.add(user.uid);
           _isDisliked = true;
-          // Se estava liked, remove o like
           if (currentLikedBy.contains(user.uid)) {
             currentLikedBy.remove(user.uid);
             _isLiked = false;
@@ -114,7 +105,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
         'dislikedBy': currentDislikedBy,
       });
 
-      // Atualiza o estado localmente após a transação bem-sucedida
       if (mounted) {
         setState(() {
           _likes = currentLikedBy.length;
@@ -130,7 +120,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
     });
   }
 
-  // Função mais robusta para abrir links
   Future<void> _launchURL(BuildContext context, String urlString) async {
     if (urlString.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -263,6 +252,14 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
     final user = _auth.currentUser;
     final bool canCommentAndReact = user != null && !user.isAnonymous;
 
+    // NOVO: Formato do preço para detalhes
+    String priceText = '';
+    if (price == 0.0) {
+      priceText = 'Grátis';
+    } else {
+      priceText = 'R\$ ${price.toStringAsFixed(2)}';
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
@@ -297,7 +294,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                   const SizedBox(height: 8),
                   Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 22, color: AppColors.price, fontWeight: FontWeight.bold)),
+                  Text(priceText, style: const TextStyle(fontSize: 22, color: AppColors.price, fontWeight: FontWeight.bold)), // USANDO priceText
                   const SizedBox(height: 24),
                   if (link.isNotEmpty)
                     SizedBox(
@@ -315,7 +312,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                       ),
                     ),
                   const SizedBox(height: 24),
-                  // Botões de Like/Dislike/Reportar
                   if (canCommentAndReact)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -373,7 +369,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                     Text(description, style: const TextStyle(fontSize: 16, height: 1.5)),
                   ],
                   const SizedBox(height: 32),
-                  // Área de Comentários
                   const Text('Comentários', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Divider(),
                   if (canCommentAndReact)
