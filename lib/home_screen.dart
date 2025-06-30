@@ -273,7 +273,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id)),
                                 ],
                               ),
-                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data))),
+                              // LINHA ALTERADA: Passando 'promotionId'
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data, promotionId: promo.id))),
                             ),
                           ),
                         );
