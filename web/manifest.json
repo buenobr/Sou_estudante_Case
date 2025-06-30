@@ -1,6 +1,6 @@
 {
-    "name": "sou_estudante",
-    "short_name": "sou_estudante",
+    "name": "Sou Estudante",
+    "short_name": "Sou Estudante"
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

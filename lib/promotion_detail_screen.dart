@@ -1,17 +1,18 @@
 // =================================================================================
-// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO COM COMENTÁRIOS)
+// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO PARA LIKES/DISLIKES/REPORT)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart'; // Para formatar a data e hora dos comentários
+import 'package:intl/intl.dart';
 
 import 'app_colors.dart';
+import 'report_problem_screen.dart'; // Importa a nova tela de reportar
 
 class PromotionDetailScreen extends StatefulWidget {
   final Map<String, dynamic> promotionData;
-  final String promotionId; // Adicionado para acessar o ID da promoção
+  final String promotionId;
   const PromotionDetailScreen({super.key, required this.promotionData, required this.promotionId});
 
   @override
@@ -23,6 +24,112 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Variáveis de estado para likes e dislikes
+  int _likes = 0;
+  int _dislikes = 0;
+  bool _isLiked = false;
+  bool _isDisliked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReactionStatus();
+  }
+
+  // Carrega o status de likes/dislikes do usuário atual e as contagens totais
+  Future<void> _loadReactionStatus() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final promoRef = _firestore.collection('promotions').doc(widget.promotionId);
+    final promoDoc = await promoRef.get();
+
+    if (promoDoc.exists) {
+      final data = promoDoc.data();
+      final List<String> likedBy = List<String>.from(data?['likedBy'] ?? []);
+      final List<String> dislikedBy = List<String>.from(data?['dislikedBy'] ?? []);
+
+      setState(() {
+        _likes = likedBy.length;
+        _dislikes = dislikedBy.length;
+        _isLiked = likedBy.contains(user.uid);
+        _isDisliked = dislikedBy.contains(user.uid);
+      });
+    }
+  }
+
+  Future<void> _toggleReaction(bool isLike) async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Você precisa estar logado para reagir!')),
+      );
+      return;
+    }
+
+    final promoRef = _firestore.collection('promotions').doc(widget.promotionId);
+
+    // Transação para garantir atomicidade das operações de like/dislike
+    _firestore.runTransaction((transaction) async {
+      final freshPromoDoc = await transaction.get(promoRef);
+      if (!freshPromoDoc.exists) return;
+
+      List<String> currentLikedBy = List<String>.from(freshPromoDoc.data()?['likedBy'] ?? []);
+      List<String> currentDislikedBy = List<String>.from(freshPromoDoc.data()?['dislikedBy'] ?? []);
+
+      if (isLike) {
+        if (currentLikedBy.contains(user.uid)) {
+          // Já curtiu, então remove o like
+          currentLikedBy.remove(user.uid);
+          _isLiked = false;
+        } else {
+          // Não curtiu, adiciona o like
+          currentLikedBy.add(user.uid);
+          _isLiked = true;
+          // Se estava disliked, remove o dislike
+          if (currentDislikedBy.contains(user.uid)) {
+            currentDislikedBy.remove(user.uid);
+            _isDisliked = false;
+          }
+        }
+      } else { // isDislike
+        if (currentDislikedBy.contains(user.uid)) {
+          // Já descurtiu, remove o dislike
+          currentDislikedBy.remove(user.uid);
+          _isDisliked = false;
+        } else {
+          // Não descurtiu, adiciona o dislike
+          currentDislikedBy.add(user.uid);
+          _isDisliked = true;
+          // Se estava liked, remove o like
+          if (currentLikedBy.contains(user.uid)) {
+            currentLikedBy.remove(user.uid);
+            _isLiked = false;
+          }
+        }
+      }
+
+      transaction.update(promoRef, {
+        'likedBy': currentLikedBy,
+        'dislikedBy': currentDislikedBy,
+      });
+
+      // Atualiza o estado localmente após a transação bem-sucedida
+      if (mounted) {
+        setState(() {
+          _likes = currentLikedBy.length;
+          _dislikes = currentDislikedBy.length;
+        });
+      }
+    }).catchError((error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao registrar reação: $error')),
+        );
+      }
+    });
+  }
+
   // Função mais robusta para abrir links
   Future<void> _launchURL(BuildContext context, String urlString) async {
     if (urlString.isEmpty) {
@@ -32,7 +139,6 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
       return;
     }
 
-    // Adiciona http:// se não tiver um esquema, para garantir que seja uma URL válida
     if (!urlString.toLowerCase().startsWith('http://') && !urlString.toLowerCase().startsWith('https://')) {
       urlString = 'https://$urlString';
     }
@@ -155,7 +261,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
     final String description = widget.promotionData['description'] ?? 'Sem descrição.';
 
     final user = _auth.currentUser;
-    final bool canComment = user != null && !user.isAnonymous;
+    final bool canCommentAndReact = user != null && !user.isAnonymous;
 
     return Scaffold(
       appBar: AppBar(
@@ -209,6 +315,58 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                       ),
                     ),
                   const SizedBox(height: 24),
+                  // Botões de Like/Dislike/Reportar
+                  if (canCommentAndReact)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _isLiked ? Icons.thumb_up : Icons.thumb_up_alt_outlined,
+                                color: _isLiked ? AppColors.primary : Colors.grey,
+                              ),
+                              onPressed: () => _toggleReaction(true),
+                            ),
+                            Text('$_likes'),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                _isDisliked ? Icons.thumb_down : Icons.thumb_down_alt_outlined,
+                                color: _isDisliked ? AppColors.danger : Colors.grey,
+                              ),
+                              onPressed: () => _toggleReaction(false),
+                            ),
+                            Text('$_dislikes'),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.report_problem_outlined, color: Colors.amber),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ReportProblemScreen(
+                                      promotionId: widget.promotionId,
+                                      promotionTitle: title,
+                                      promotionLink: link,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            const Text('Reportar'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 24),
                   if (description.isNotEmpty) ...[
                     const Text('Descrição', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const Divider(),
@@ -218,7 +376,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                   // Área de Comentários
                   const Text('Comentários', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Divider(),
-                  if (canComment)
+                  if (canCommentAndReact)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Row(

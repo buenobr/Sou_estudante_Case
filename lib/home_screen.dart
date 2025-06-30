@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO)
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO com Busca em Tempo Real)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -17,7 +17,8 @@ import 'admin_trash_screen.dart';
 import 'admin_approval_screen.dart';
 import 'settings_screen.dart';
 import 'ad_helper.dart';
-import 'admin_user_management_screen.dart'; // <-- IMPORT ADICIONADO
+import 'admin_user_management_screen.dart';
+import 'admin_reports_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,12 +34,21 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<BannerAd?> _bannerAds = [];
   final int _adInterval = 3;
 
+  // NOVO: Variáveis para a busca
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _debounce; // Para atrasar a busca e evitar muitas consultas ao Firestore
+
   @override
   void initState() {
     super.initState();
     _authSubscription = FirebaseAuth.instance.authStateChanges().listen((user) {
       _setupUserDataStream(user);
     });
+
+    // NOVO: Listener para o campo de busca
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
@@ -47,7 +57,22 @@ class _HomeScreenState extends State<HomeScreen> {
     for (var ad in _bannerAds) {
       ad?.dispose();
     }
+    _searchController.removeListener(_onSearchChanged); // NOVO
+    _searchController.dispose(); // NOVO
+    _debounce?.cancel(); // NOVO
     super.dispose();
+  }
+
+  // NOVO: Lógica de debounce para a busca
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (_searchQuery != _searchController.text.trim()) {
+        setState(() {
+          _searchQuery = _searchController.text.trim();
+        });
+      }
+    });
   }
 
   void _loadBannerAd(int adIndex) {
@@ -134,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (value == 'aprovar') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminApprovalScreen()));
         if (value == 'configuracoes') Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
         if (value == 'gerenciar_usuarios') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminUserManagementScreen()));
+        if (value == 'gerenciar_reportes') Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminReportsScreen()));
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(value: 'configuracoes', child: ListTile(leading: Icon(Icons.settings), title: Text('Configurações'))),
@@ -142,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (userRole == 'admin') const PopupMenuItem<String>(value: 'aprovar', child: ListTile(leading: Icon(Icons.playlist_add_check, color: AppColors.price), title: Text('Aprovar Promoções', style: TextStyle(color: AppColors.price)))),
         if (userRole == 'admin') const PopupMenuItem<String>(value: 'gerenciar_usuarios', child: ListTile(leading: Icon(Icons.people, color: AppColors.primary), title: Text('Gerenciar Usuários', style: TextStyle(color: AppColors.primary)))),
         if (userRole == 'admin') const PopupMenuItem<String>(value: 'lixeira', child: ListTile(leading: Icon(Icons.delete_sweep, color: AppColors.danger), title: Text('Lixeira', style: TextStyle(color: AppColors.danger)))),
+        if (userRole == 'admin') const PopupMenuItem<String>(value: 'gerenciar_reportes', child: ListTile(leading: Icon(Icons.report, color: Colors.amber), title: Text('Gerenciar Reportes', style: TextStyle(color: Colors.amber)))),
         const PopupMenuDivider(),
         const PopupMenuItem<String>(value: 'sair', child: ListTile(leading: Icon(Icons.exit_to_app), title: Text('Sair'))),
       ],
@@ -177,8 +204,43 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Promoções'),
+        // NOVO: Título dinâmico ou campo de busca
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Buscar promoções...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                  border: InputBorder.none,
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                        _isSearching = false;
+                      });
+                    },
+                  ),
+                ),
+                autofocus: true,
+              )
+            : const Text('Promoções'),
         actions: [
+          // NOVO: Botão de busca
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  _searchQuery = '';
+                }
+              });
+            },
+          ),
           StreamBuilder<DocumentSnapshot>(
             stream: _userDataStream,
             builder: (context, snapshot) {
@@ -195,15 +257,24 @@ class _HomeScreenState extends State<HomeScreen> {
             child: StreamBuilder<DocumentSnapshot>(
               stream: _userDataStream,
               builder: (context, userDataSnapshot) {
-                final docExists = userDataSnapshot.hasData && userDataSnapshot.data!.exists;
-                final userFavorites = docExists ? List<String>.from(userDataSnapshot.data!['favorites'] ?? []) : <String>[];
-                final userRole = docExists ? userDataSnapshot.data!['role'] : null;
+                final docData = userDataSnapshot.data?.data() as Map<String, dynamic>?;
+                final userFavorites = (docData?['favorites'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [];
+                final userRole = docData?['role'];
 
                 return StreamBuilder<QuerySnapshot>(
                   stream: () {
                     Query query = FirebaseFirestore.instance.collection('promotions').where('status', isEqualTo: 'approved');
                     if (_selectedFilter != 'Destaques') {
                       query = query.where('category', isEqualTo: _selectedFilter);
+                    }
+                    // NOVO: Adiciona filtro de busca se houver uma query
+                    if (_searchQuery.isNotEmpty) {
+                      // Para busca em tempo real, Firebase não suporta busca "contém" diretamente
+                      // Para soluções mais robustas:
+                      // 1. Usar um serviço de busca como Algolia ou ElasticSearch.
+                      // 2. Implementar busca por prefixo (startAt/endAt).
+                      // Por enquanto, vamos filtrar no cliente para demonstrar.
+                      // Se a lista de promoções for muito grande, isso pode não ser performático.
                     }
                     return query.orderBy('createdAt', descending: true).snapshots();
                   }(),
@@ -214,7 +285,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('Erro ao carregar promoções.', textAlign: TextAlign.center)));
                     }
                     if (!promoSnapshot.hasData || promoSnapshot.data!.docs.isEmpty) return const Center(child: Text('Nenhuma promoção encontrada.'));
-                    final promotions = promoSnapshot.data!.docs;
+                    
+                    // NOVO: Filtragem local após receber os dados do Firestore
+                    var promotions = promoSnapshot.data!.docs;
+                    if (_searchQuery.isNotEmpty) {
+                      promotions = promotions.where((promo) {
+                        final data = promo.data() as Map<String, dynamic>;
+                        final title = (data['title'] ?? '').toString().toLowerCase();
+                        final description = (data['description'] ?? '').toString().toLowerCase();
+                        final category = (data['category'] ?? '').toString().toLowerCase();
+                        final query = _searchQuery.toLowerCase();
+                        return title.contains(query) || description.contains(query) || category.contains(query);
+                      }).toList();
+                    }
+
+                    // Se não houver promoções após a filtragem
+                    if (promotions.isEmpty && _searchQuery.isNotEmpty) {
+                      return const Center(child: Text('Nenhuma promoção encontrada para sua busca.'));
+                    } else if (promotions.isEmpty) {
+                      return const Center(child: Text('Nenhuma promoção encontrada.'));
+                    }
                     
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       final int adCount = promotions.length ~/ _adInterval;
@@ -255,6 +345,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final String? imageUrl = data['imageUrl'];
                         final String category = data['category'] ?? '';
                         final bool isFavorited = userFavorites.contains(promo.id);
+                        final int likesCount = (data['likedBy'] as List<dynamic>?)?.length ?? 0;
 
                         return Card(
                           margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
@@ -264,7 +355,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: ListTile(
                               leading: Container(width: 80, height: 80, color: Colors.grey[200], child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.contain, loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()), errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)) : const Icon(Icons.shopping_bag, color: Colors.grey)),
                               title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const SizedBox(height: 4), Text(category, style: const TextStyle(color: AppColors.primary, fontSize: 12)), const SizedBox(height: 4), Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold))]),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text(category, style: const TextStyle(color: AppColors.primary, fontSize: 12)),
+                                  const SizedBox(height: 4),
+                                  Text('R\$ ${price.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.thumb_up, size: 16, color: Colors.grey[600]),
+                                      const SizedBox(width: 4),
+                                      Text('$likesCount', style: TextStyle(color: Colors.grey[600])),
+                                    ],
+                                  ),
+                                ],
+                              ),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -273,7 +380,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id)),
                                 ],
                               ),
-                              // LINHA ALTERADA: Passando 'promotionId'
                               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data, promotionId: promo.id))),
                             ),
                           ),
