@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 2: lib/add_promotion_screen.dart (VERSÃO CORRIGIDA PARA TELA DE SUCESSO)
+// ARQUIVO 2: lib/add_promotion_screen.dart (VERSÃO CORRIGIDA ESCOPO finalLink)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:any_link_preview/any_link_preview.dart';
 
-import 'promotion_submitted_screen.dart'; // <--- NOVO IMPORT: Tela de sucesso
+import 'promotion_submitted_screen.dart';
 
 class CurrencyPtBrInputFormatter extends TextInputFormatter {
   @override
@@ -47,17 +47,38 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
   String? _selectedCategory;
   final List<String> _categories = ['Software', 'Cursos', 'Produtos', 'Viagens'];
 
+  String _selectedPriceType = 'monetario';
+
   String? _normalizeAndValidateUrl(String? url) {
     if (url == null || url.isEmpty) return null;
     String link = url.trim();
     if (!link.toLowerCase().startsWith('http://') && !link.toLowerCase().startsWith('https://')) {
       link = 'https://$link';
     }
-    final uri = Uri.tryParse(link);
-    if (uri != null && uri.isAbsolute && uri.host.isNotEmpty && uri.host.contains('.')) {
-      return link;
+    try {
+      Uri uri = Uri.parse(link);
+      String scheme = uri.scheme.toLowerCase();
+      String host = uri.host.toLowerCase();
+      if (host.startsWith('www.')) {
+        host = host.substring(4);
+      }
+      String path = uri.path.toLowerCase();
+      if (path.isNotEmpty && path != '/' && path.endsWith('/')) {
+        path = path.substring(0, path.length - 1);
+      }
+      uri = uri.replace(
+        scheme: scheme,
+        host: host,
+        path: path,
+        query: '',
+        fragment: '',
+        userInfo: '',
+      );
+      return uri.toString();
+    } catch (e) {
+      debugPrint('Erro ao normalizar URL: $e');
+      return null;
     }
-    return null;
   }
 
   Future<void> _fetchLinkPreview() async {
@@ -99,21 +120,67 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       return;
     }
     setState(() => _isLoading = true);
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você precisa estar logado para enviar promoções!')));
       setState(() => _isLoading = false);
       return;
     }
+
+    final String? normalizedLink = _normalizeAndValidateUrl(_linkController.text);
+
+    if (normalizedLink == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O link da promoção não é válido.')));
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    // NOVO: Declara finalLink fora do bloco try
+    String finalLink; 
+
     try {
+      final existingPromotions = await FirebaseFirestore.instance
+          .collection('promotions')
+          .where('link', isEqualTo: normalizedLink)
+          .limit(1)
+          .get();
+
+      if (existingPromotions.docs.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Esta oferta já existe! Não podemos enviar ofertas duplicadas.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
       String? finalImageUrl = _manualImageUrl ?? _autoFetchedImageUrl;
-      final priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
-      final double priceValue = double.tryParse(priceString) ?? 0.0;
-      final String finalLink = _normalizeAndValidateUrl(_linkController.text) ?? _linkController.text.trim();
+      
+      double priceValue;
+      if (_priceController.text.isEmpty) {
+        priceValue = 0.0;
+      } else if (_selectedPriceType == 'monetario') {
+        final String priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
+        priceValue = double.tryParse(priceString) ?? 0.0;
+      } else { // porcentagem
+        priceValue = double.tryParse(_priceController.text) ?? 0.0;
+        if (priceValue < 0) priceValue = 0;
+        if (priceValue > 100) priceValue = 100;
+      }
+
+      // NOVO: Atribui o valor a finalLink aqui
+      finalLink = normalizedLink; // Atribui, sem 'final' pois já foi declarada
 
       await FirebaseFirestore.instance.collection('promotions').add({
         'title': _titleController.text.trim(),
         'link': finalLink,
-        'price': priceValue,
+        'priceValue': priceValue,
+        'priceType': _selectedPriceType,
         'category': _selectedCategory,
         'imageUrl': finalImageUrl,
         'description': _descriptionController.text.trim(),
@@ -122,7 +189,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
         'status': 'pending',
       });
       if (mounted) {
-        // Redireciona para a nova tela de sucesso
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Promoção enviada para aprovação!')));
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => const PromotionSubmittedScreen()),
         );
@@ -150,9 +217,51 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
               const SizedBox(height: 16),
               TextFormField(controller: _linkController, decoration: const InputDecoration(labelText: 'Link da Promoção'), keyboardType: TextInputType.url, validator: (value) => _normalizeAndValidateUrl(value) == null ? 'Por favor, insira um link válido' : null),
               Align(alignment: Alignment.centerRight, child: TextButton.icon(icon: const Icon(Icons.search, size: 20), label: const Text('Buscar dados do link'), onPressed: _fetchLinkPreview)),
-              TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Preço', border: OutlineInputBorder(), prefixText: 'R\$ '), keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyPtBrInputFormatter()], validator: (value) => value!.isEmpty ? 'Campo obrigatório' : null),
+              
+              DropdownButtonFormField<String>(
+                value: _selectedPriceType,
+                decoration: const InputDecoration(labelText: 'Tipo de Preço'),
+                items: const [
+                  DropdownMenuItem(value: 'monetario', child: Text('Monetário (R\$)')),
+                  DropdownMenuItem(value: 'porcentagem', child: Text('Porcentagem (%)')),
+                ],
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedPriceType = newValue!;
+                    _priceController.clear();
+                  });
+                },
+              ),
               const SizedBox(height: 16),
-              TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição (opcional)', border: OutlineInputBorder()), maxLines: 4),
+
+              TextFormField(
+                controller: _priceController,
+                decoration: InputDecoration(
+                  labelText: _selectedPriceType == 'monetario' ? 'Preço' : 'Porcentagem',
+                  border: const OutlineInputBorder(),
+                  prefixText: _selectedPriceType == 'monetario' ? 'R\$ ' : null,
+                  suffixText: _selectedPriceType == 'porcentagem' ? '%' : null,
+                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: _selectedPriceType == 'monetario'
+                    ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d{0,2}$'))]
+                    : [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Campo obrigatório';
+                  }
+                  if (_selectedPriceType == 'porcentagem') {
+                    final double? percent = double.tryParse(value);
+                    if (percent == null || percent < 0 || percent > 100) {
+                      return 'Porcentagem inválida (0-100)';
+                    }
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição (opcional)', border: const OutlineInputBorder()), maxLines: 4),
               const SizedBox(height: 24),
               const Text('Imagem Principal', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),

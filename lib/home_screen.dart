@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO Preço "Grátis")
+// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO: Removido import intl não usado)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
+// import 'package:intl/intl.dart'; // <--- REMOVIDA ESTA LINHA!
 
 import 'login_screen.dart';
 import 'add_promotion_screen.dart';
@@ -238,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 autofocus: true,
               )
-            : const Text('Promoções'),
+            : const Text('Sou Estudante'),
         actions: [
           if (!_isSearching)
             IconButton(
@@ -338,18 +339,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         final data = promo.data() as Map<String, dynamic>;
                         final String title = data['title'] ?? '';
                         final String link = data['link'] ?? '';
-                        final double price = (data['price'] ?? 0.0).toDouble();
+                        final double priceValue = (data['priceValue'] ?? 0.0).toDouble();
+                        final String priceType = data['priceType'] ?? 'monetario';
                         final String? imageUrl = data['imageUrl'];
                         final String category = data['category'] ?? '';
                         final bool isFavorited = userFavorites.contains(promo.id);
                         final int likesCount = (data['likedBy'] as List<dynamic>?)?.length ?? 0;
 
-                        // NOVO: Formato do preço
-                        String priceText = '';
-                        if (price == 0.0) {
-                          priceText = 'Grátis';
-                        } else {
-                          priceText = 'R\$ ${price.toStringAsFixed(2)}';
+                        String formattedPriceText = '';
+                        if (priceValue == 0.0) {
+                          formattedPriceText = 'Grátis';
+                        } else if (priceType == 'monetario') {
+                          formattedPriceText = 'R\$ ${priceValue.toStringAsFixed(2)}';
+                        } else { // porcentagem
+                          formattedPriceText = '${priceValue.toInt()}% de desconto';
                         }
 
                         return Card(
@@ -358,15 +361,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                              horizontalTitleGap: 8.0,
                               leading: Container(width: 80, height: 80, color: Colors.grey[200], child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.contain, loadingBuilder: (context, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator()), errorBuilder: (context, error, stackTrace) => const Icon(Icons.error)) : const Icon(Icons.shopping_bag, color: Colors.grey)),
-                              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
                                   Text(category, style: const TextStyle(color: AppColors.primary, fontSize: 12)),
                                   const SizedBox(height: 4),
-                                  Text(priceText, style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)), // USANDO priceText
+                                  Text(formattedPriceText, style: const TextStyle(color: AppColors.price, fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -380,9 +385,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(icon: const Icon(Icons.share, color: Colors.grey), onPressed: () => _sharePromotion(title, link)),
-                                  IconButton(icon: Icon(isFavorited ? Icons.favorite : Icons.favorite_border, color: isFavorited ? AppColors.danger : Colors.grey), onPressed: () => _toggleFavorite(promo.id)),
-                                  if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id)),
+                                  IconButton(icon: const Icon(Icons.share, color: Colors.grey), onPressed: () => _sharePromotion(title, link), padding: EdgeInsets.zero, constraints: BoxConstraints()),
+                                  IconButton(icon: Icon(isFavorited ? Icons.favorite : Icons.favorite_border, color: isFavorited ? AppColors.danger : Colors.grey), onPressed: () => _toggleFavorite(promo.id), padding: EdgeInsets.zero, constraints: BoxConstraints()),
+                                  if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id), padding: EdgeInsets.zero, constraints: BoxConstraints()),
                                 ],
                               ),
                               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data, promotionId: promo.id))),

@@ -1,12 +1,11 @@
 // =================================================================================
-// ARQUIVO 3: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA)
+// ARQUIVO 3: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA NOME DA CLASSE STATE)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'add_promotion_screen.dart'; // Reutiliza o formatador de moeda
 
 class EditPromotionScreen extends StatefulWidget {
   final String promotionId;
@@ -16,7 +15,8 @@ class EditPromotionScreen extends StatefulWidget {
   State<EditPromotionScreen> createState() => _EditPromotionScreenState();
 }
 
-class _EditPromotionScreenState extends State<EditPromotionScreen> {
+// CORREÇÃO AQUI: Adicionar 'Screen' ao nome da classe
+class _EditPromotionScreenState extends State<EditPromotionScreen> { // <--- CORREÇÃO AQUI!
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();
@@ -31,10 +31,44 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
   String? _selectedCategory;
   final List<String> _categories = ['Software', 'Cursos', 'Produtos', 'Viagens'];
 
+  String _selectedPriceType = 'monetario';
+
   @override
   void initState() {
     super.initState();
     _loadPromotionData();
+  }
+
+  String? _normalizeAndValidateUrl(String? url) {
+    if (url == null || url.isEmpty) return null;
+    String link = url.trim();
+    if (!link.toLowerCase().startsWith('http://') && !link.toLowerCase().startsWith('https://')) {
+      link = 'https://$link';
+    }
+    try {
+      Uri uri = Uri.parse(link);
+      String scheme = uri.scheme.toLowerCase();
+      String host = uri.host.toLowerCase();
+      if (host.startsWith('www.')) {
+        host = host.substring(4);
+      }
+      String path = uri.path.toLowerCase();
+      if (path.isNotEmpty && path != '/' && path.endsWith('/')) {
+        path = path.substring(0, path.length - 1);
+      }
+      uri = uri.replace(
+        scheme: scheme,
+        host: host,
+        path: path,
+        query: '',
+        fragment: '',
+        userInfo: '',
+      );
+      return uri.toString();
+    } catch (e) {
+      debugPrint('Erro ao normalizar URL: $e');
+      return null;
+    }
   }
 
   Future<void> _loadPromotionData() async {
@@ -48,11 +82,20 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
         _selectedCategory = data['category'];
         _currentImageUrl = data['imageUrl'];
         
-        final price = (data['price'] ?? 0.0).toDouble();
-        final formatter = NumberFormat("#,##0.00", "pt_BR");
-        _priceController.text = formatter.format(price);
-        
-        setState(() => _isLoading = false);
+        final double priceValue = (data['priceValue'] ?? 0.0).toDouble();
+        final String fetchedPriceType = data['priceType'] ?? 'monetario';
+
+        if (fetchedPriceType == 'monetario') {
+          final formatter = NumberFormat("#,##0.00", "pt_BR");
+          _priceController.text = formatter.format(priceValue);
+        } else {
+          _priceController.text = priceValue.toInt().toString();
+        }
+
+        setState(() {
+          _selectedPriceType = fetchedPriceType;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -82,15 +125,33 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
 
+    final String? normalizedLink = _normalizeAndValidateUrl(_linkController.text);
+    if (normalizedLink == null) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O link da promoção não é válido.')));
+      setState(() => _isSaving = false);
+      return;
+    }
+
     try {
       String? finalImageUrl = _manualImageUrl ?? _currentImageUrl;
-      final priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
-      final double priceValue = double.tryParse(priceString) ?? 0.0;
+      
+      double priceValue;
+      if (_priceController.text.isEmpty) {
+        priceValue = 0.0;
+      } else if (_selectedPriceType == 'monetario') {
+        final String priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
+        priceValue = double.tryParse(priceString) ?? 0.0;
+      } else {
+        priceValue = double.tryParse(_priceController.text) ?? 0.0;
+        if (priceValue < 0) priceValue = 0;
+        if (priceValue > 100) priceValue = 100;
+      }
 
       await FirebaseFirestore.instance.collection('promotions').doc(widget.promotionId).update({
         'title': _titleController.text.trim(),
-        'link': _linkController.text.trim(),
-        'price': priceValue,
+        'link': normalizedLink,
+        'priceValue': priceValue,
+        'priceType': _selectedPriceType,
         'category': _selectedCategory,
         'imageUrl': finalImageUrl,
         'description': _descriptionController.text.trim(),
@@ -132,11 +193,53 @@ class _EditPromotionScreenState extends State<EditPromotionScreen> {
                           onPressed: () => _launchURL(_linkController.text),
                         ),
                       ),
-                      validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
+                      validator: (v) => _normalizeAndValidateUrl(v) == null ? 'Por favor, insira um link válido' : null,
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(controller: _priceController, decoration: const InputDecoration(labelText: 'Preço', prefixText: 'R\$ '), keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly, CurrencyPtBrInputFormatter()], validator: (v) => v!.isEmpty ? 'Obrigatório' : null),
+                    
+                    DropdownButtonFormField<String>(
+                      value: _selectedPriceType,
+                      decoration: const InputDecoration(labelText: 'Tipo de Preço'),
+                      items: const [
+                        DropdownMenuItem(value: 'monetario', child: Text('Monetário (R\$)')),
+                        DropdownMenuItem(value: 'porcentagem', child: Text('Porcentagem (%)')),
+                      ],
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedPriceType = newValue!;
+                          _priceController.clear();
+                        });
+                      },
+                    ),
                     const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _priceController,
+                      decoration: InputDecoration(
+                        labelText: _selectedPriceType == 'monetario' ? 'Preço' : 'Porcentagem',
+                        border: const OutlineInputBorder(),
+                        prefixText: _selectedPriceType == 'monetario' ? 'R\$ ' : null,
+                        suffixText: _selectedPriceType == 'porcentagem' ? '%' : null,
+                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: _selectedPriceType == 'monetario'
+                          ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*[.,]?\d{0,2}$'))]
+                          : [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Campo obrigatório';
+                        }
+                        if (_selectedPriceType == 'porcentagem') {
+                          final double? percent = double.tryParse(value);
+                          if (percent == null || percent < 0 || percent > 100) {
+                            return 'Porcentagem inválida (0-100)';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
                     TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição'), maxLines: 4),
                     const SizedBox(height: 24),
                     const Text('Imagem Principal', style: TextStyle(fontWeight: FontWeight.bold)),

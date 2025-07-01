@@ -1,5 +1,5 @@
 // =================================================================================
-// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO COM PREÇO "GRÁTIS")
+// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO COM PREÇO DINÂMICO)
 // =================================================================================
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -243,7 +243,8 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final String title = widget.promotionData['title'] ?? 'Sem título';
-    final double price = (widget.promotionData['price'] ?? 0.0).toDouble();
+    final double priceValue = (widget.promotionData['priceValue'] ?? 0.0).toDouble();
+    final String priceType = widget.promotionData['priceType'] ?? 'monetario';
     final String? imageUrl = widget.promotionData['imageUrl'];
     final String category = widget.promotionData['category'] ?? 'Sem categoria';
     final String link = widget.promotionData['link'] ?? '';
@@ -252,12 +253,13 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
     final user = _auth.currentUser;
     final bool canCommentAndReact = user != null && !user.isAnonymous;
 
-    // NOVO: Formato do preço para detalhes
-    String priceText = '';
-    if (price == 0.0) {
-      priceText = 'Grátis';
-    } else {
-      priceText = 'R\$ ${price.toStringAsFixed(2)}';
+    String formattedPriceText = '';
+    if (priceValue == 0.0) {
+      formattedPriceText = 'Grátis';
+    } else if (priceType == 'monetario') {
+      formattedPriceText = 'R\$ ${priceValue.toStringAsFixed(2)}';
+    } else { // porcentagem
+      formattedPriceText = '${priceValue.toInt()}% de desconto';
     }
 
     return Scaffold(
@@ -294,7 +296,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
                   const SizedBox(height: 8),
                   Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(priceText, style: const TextStyle(fontSize: 22, color: AppColors.price, fontWeight: FontWeight.bold)), // USANDO priceText
+                  Text(formattedPriceText, style: const TextStyle(fontSize: 22, color: AppColors.price, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
                   if (link.isNotEmpty)
                     SizedBox(
