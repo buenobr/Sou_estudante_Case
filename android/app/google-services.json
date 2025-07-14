@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "167027864856-4dvg8tcbiqo4ctnl9864smc2r32792f2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sou_estudante",
+            "certificate_hash": "55674f6a00921e32e91f3d47337c937064affeed"
+          }
+        },
+        {
+          "client_id": "167027864856-n5nh82j1nn4s53qkqtafkhjq2g2a6mp5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.sou_estudante",
+            "certificate_hash": "7424e2d516acebf1c30c1992f60391f5619e191c"
+          }
+        },
+        {
           "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +45,57 @@
             {
               "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "167027864856-hs1gj153d7l1qdcide9te1okm9jdihol.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.souEstudante"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:167027864856:android:b88b6ffbab37d011d5da6d",
+        "android_client_info": {
+          "package_name": "com.simplishlab.souestudante"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "167027864856-b9pimq0vab8vbrafvnddrp1occ6d1917.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.simplishlab.souestudante",
+            "certificate_hash": "55674f6a00921e32e91f3d47337c937064affeed"
+          }
+        },
+        {
+          "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB572Mbr1GPDBKlAyZ6J1u-IKje2si8gCA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "167027864856-e2ah8j05g98in2pvltkejbs4uedm565j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "167027864856-hs1gj153d7l1qdcide9te1okm9jdihol.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.souEstudante"
+              }
             }
           ]
         }

@@ -1,4 +1,4 @@
-package com.example.sou_estudante
+package com.simplishlab.souestudante
 
 import io.flutter.embedding.android.FlutterActivity
 
