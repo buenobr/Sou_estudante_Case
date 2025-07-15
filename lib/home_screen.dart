@@ -1,5 +1,5 @@
 // =================================================================================
-// ARQUIVO 4: lib/home_screen.dart (CORRIGIDO: Removido import intl não usado)
+// ARQUIVO: lib/home_screen.dart (CORRIGIDO PARA MANTER A POSIÇÃO DA ROLAGEM)
 // =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:share_plus/share_plus.dart';
-// import 'package:intl/intl.dart'; // <--- REMOVIDA ESTA LINHA!
 
 import 'login_screen.dart';
 import 'add_promotion_screen.dart';
@@ -26,6 +25,7 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
 class _HomeScreenState extends State<HomeScreen> {
   final List<String> _filters = ['Destaques', 'Software', 'Cursos', 'Produtos', 'Viagens'];
   String _selectedFilter = 'Destaques';
@@ -114,19 +114,22 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
   Future<void> _moveToTrash(BuildContext context, String docId) async {
     final bool? confirm = await showDialog(context: context, builder: (context) => AlertDialog(title: const Text('Mover para Lixeira'), content: const Text('Tem certeza? A promoção ficará oculta para os usuários.'), actions: [TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')), TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirmar'))]));
     if (confirm == true) {
       try {
         await FirebaseFirestore.instance.collection('promotions').doc(docId).update({'status': 'deleted'});
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao mover para lixeira: $e')));
+        if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao mover para lixeira: $e')));
       }
     }
   }
+
   void _sharePromotion(String title, String link) {
     Share.share('Olha essa promoção que eu encontrei: $title\n\n$link');
   }
+
   void _toggleFavorite(String promoId) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
@@ -144,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
   }
+
   Widget _buildUserMenu(User? user, DocumentSnapshot? userData) {
     if (user == null || user.isAnonymous) {
       return TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LoginScreen())), child: const Text('Login / Cadastrar', style: TextStyle(color: Colors.white)));
@@ -180,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   Widget _buildFilterChips() {
     final Brightness brightness = Theme.of(context).brightness;
 
@@ -316,6 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     final int adCount = promotions.length ~/ _adInterval;
 
                     return ListView.builder(
+                      key: const PageStorageKey<String>('promotionsList'),
                       padding: const EdgeInsets.all(8.0),
                       itemCount: promotions.length + adCount,
                       itemBuilder: (context, index) {
@@ -351,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           formattedPriceText = 'Grátis';
                         } else if (priceType == 'monetario') {
                           formattedPriceText = 'R\$ ${priceValue.toStringAsFixed(2)}';
-                        } else { // porcentagem
+                        } else {
                           formattedPriceText = '${priceValue.toInt()}% de desconto';
                         }
 
@@ -385,9 +391,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(icon: const Icon(Icons.share, color: Colors.grey), onPressed: () => _sharePromotion(title, link), padding: EdgeInsets.zero, constraints: BoxConstraints()),
-                                  IconButton(icon: Icon(isFavorited ? Icons.favorite : Icons.favorite_border, color: isFavorited ? AppColors.danger : Colors.grey), onPressed: () => _toggleFavorite(promo.id), padding: EdgeInsets.zero, constraints: BoxConstraints()),
-                                  if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id), padding: EdgeInsets.zero, constraints: BoxConstraints()),
+                                  IconButton(icon: const Icon(Icons.share, color: Colors.grey), onPressed: () => _sharePromotion(title, link), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                                  IconButton(icon: Icon(isFavorited ? Icons.favorite : Icons.favorite_border, color: isFavorited ? AppColors.danger : Colors.grey), onPressed: () => _toggleFavorite(promo.id), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                                  if (userRole == 'admin') IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.danger), onPressed: () => _moveToTrash(context, promo.id), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
                                 ],
                               ),
                               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data, promotionId: promo.id))),
