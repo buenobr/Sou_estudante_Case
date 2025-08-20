@@ -1,6 +1,3 @@
-// =================================================================================
-// 4. ARQUIVO: lib/promotion_detail_screen.dart (CORRIGIDO COM PREÇO DINÂMICO)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -86,7 +83,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
             _isDisliked = false;
           }
         }
-      } else { // isDislike
+      } else {
         if (currentDislikedBy.contains(user.uid)) {
           currentDislikedBy.remove(user.uid);
           _isDisliked = false;
@@ -258,7 +255,7 @@ class _PromotionDetailScreenState extends State<PromotionDetailScreen> {
       formattedPriceText = 'Grátis';
     } else if (priceType == 'monetario') {
       formattedPriceText = 'R\$ ${priceValue.toStringAsFixed(2)}';
-    } else { // porcentagem
+    } else {
       formattedPriceText = '${priceValue.toInt()}% de desconto';
     }
 

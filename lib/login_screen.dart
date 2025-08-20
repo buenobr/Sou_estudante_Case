@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 1: lib/login_screen.dart (ALTERADO)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,7 +14,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  // NOVO: Variável de estado para controlar a visibilidade da senha
   bool _isPasswordVisible = false;
 
   void _showErrorSnackBar(String message) {
@@ -124,20 +120,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'E-mail', border: OutlineInputBorder()), keyboardType: TextInputType.emailAddress, validator: (value) => value!.isEmpty ? 'Por favor, insira um e-mail' : null),
                 const SizedBox(height: 16),
-                // CAMPO DE SENHA ATUALIZADO
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: !_isPasswordVisible, // Usa a variável de estado
+                  obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     labelText: 'Senha',
                     border: const OutlineInputBorder(),
-                    // Adiciona o ícone do olho
                     suffixIcon: IconButton(
                       icon: Icon(
                         _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
                       ),
                       onPressed: () {
-                        // Inverte o estado da visibilidade
                         setState(() {
                           _isPasswordVisible = !_isPasswordVisible;
                         });

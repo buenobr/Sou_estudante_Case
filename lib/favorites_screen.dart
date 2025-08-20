@@ -1,6 +1,3 @@
-// =================================================================================
-// 4. ARQUIVO: lib/favorites_screen.dart (VERSÃO FINAL)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -116,7 +113,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             leading: Container(width: 80, height: 80, color: Colors.grey[200], child: imageUrl != null ? Image.network(imageUrl, fit: BoxFit.contain) : const Icon(Icons.shopping_bag)),
                             title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                             subtitle: Text('$category - R\$ ${price.toStringAsFixed(2)}'),
-                            // LINHA ALTERADA: Passando 'promotionId'
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => PromotionDetailScreen(promotionData: data, promotionId: promotions[index].id))),
                           ),
                         );

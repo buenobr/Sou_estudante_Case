@@ -1,6 +1,3 @@
-// =================================================================================
-// NOVO ARQUIVO: lib/admin_reports_screen.dart (CORRIGIDO Overflow)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -53,7 +50,6 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     }
   }
 
-  // Função para abrir links (reutilizada)
   Future<void> _launchURL(BuildContext context, String urlString) async {
     if (urlString.isEmpty) return;
 
@@ -123,7 +119,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   statusColor = Colors.grey;
                   statusIcon = Icons.info;
                   break;
-                default: // pending
+                default:
                   statusColor = Colors.orange;
                   statusIcon = Icons.warning;
                   break;
@@ -147,27 +143,26 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           if (promotionLink.isNotEmpty)
                             TextButton.icon(
                               icon: const Icon(Icons.link),
-                              label: Text('Ver Link da Promoção'),
+                              label: const Text('Ver Link da Promoção'),
                               onPressed: () => _launchURL(context, promotionLink),
                             ),
                           const SizedBox(height: 16),
-                          // CORREÇÃO AQUI: Usando Expanded para os botões dentro da Row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              Expanded( // Botão "Marcar como Resolvido"
+                              Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: status != 'resolved' ? () => _updateReportStatus(reportDoc.id, 'resolved') : null,
                                   icon: const Icon(Icons.check),
-                                  label: const Text('Resolvido'), // Texto mais curto
+                                  label: const Text('Resolvido'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8), // Espaçamento entre os botões
-                              Expanded( // Botão "Ignorar"
+                              const SizedBox(width: 8),
+                              Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: status != 'ignored' ? () => _updateReportStatus(reportDoc.id, 'ignored') : null,
                                   icon: const Icon(Icons.visibility_off),
@@ -178,9 +173,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8), // Espaçamento entre os botões
-                              // O IconButton geralmente não precisa de Expanded se os outros estiverem,
-                              // mas pode ser colocado dentro de um Flexible se ainda houver problemas de espaço.
+                              const SizedBox(width: 8),
                               IconButton(
                                 onPressed: () => _deleteReport(reportDoc.id),
                                 icon: const Icon(Icons.delete_forever, color: AppColors.danger),

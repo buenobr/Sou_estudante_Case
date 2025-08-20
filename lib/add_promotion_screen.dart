@@ -1,13 +1,9 @@
-// =================================================================================
-// ARQUIVO 2: lib/add_promotion_screen.dart (VERSÃO CORRIGIDA ESCOPO finalLink)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:any_link_preview/any_link_preview.dart';
-
 import 'promotion_submitted_screen.dart';
 
 class CurrencyPtBrInputFormatter extends TextInputFormatter {
@@ -136,8 +132,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       return;
     }
 
-    // NOVO: Declara finalLink fora do bloco try
-    String finalLink; 
+    String finalLink;
 
     try {
       final existingPromotions = await FirebaseFirestore.instance
@@ -160,21 +155,20 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
       }
 
       String? finalImageUrl = _manualImageUrl ?? _autoFetchedImageUrl;
-      
+
       double priceValue;
       if (_priceController.text.isEmpty) {
         priceValue = 0.0;
       } else if (_selectedPriceType == 'monetario') {
         final String priceString = _priceController.text.replaceAll('.', '').replaceAll(',', '.');
         priceValue = double.tryParse(priceString) ?? 0.0;
-      } else { // porcentagem
+      } else {
         priceValue = double.tryParse(_priceController.text) ?? 0.0;
         if (priceValue < 0) priceValue = 0;
         if (priceValue > 100) priceValue = 100;
       }
 
-      // NOVO: Atribui o valor a finalLink aqui
-      finalLink = normalizedLink; // Atribui, sem 'final' pois já foi declarada
+      finalLink = normalizedLink;
 
       await FirebaseFirestore.instance.collection('promotions').add({
         'title': _titleController.text.trim(),
@@ -217,7 +211,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
               const SizedBox(height: 16),
               TextFormField(controller: _linkController, decoration: const InputDecoration(labelText: 'Link da Promoção'), keyboardType: TextInputType.url, validator: (value) => _normalizeAndValidateUrl(value) == null ? 'Por favor, insira um link válido' : null),
               Align(alignment: Alignment.centerRight, child: TextButton.icon(icon: const Icon(Icons.search, size: 20), label: const Text('Buscar dados do link'), onPressed: _fetchLinkPreview)),
-              
+
               DropdownButtonFormField<String>(
                 value: _selectedPriceType,
                 decoration: const InputDecoration(labelText: 'Tipo de Preço'),
@@ -260,7 +254,7 @@ class _AddPromotionScreenState extends State<AddPromotionScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               TextFormField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Descrição (opcional)', border: const OutlineInputBorder()), maxLines: 4),
               const SizedBox(height: 24),
               const Text('Imagem Principal', style: TextStyle(fontWeight: FontWeight.bold)),

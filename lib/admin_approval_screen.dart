@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 3: lib/admin_approval_screen.dart (VERSÃO CORRIGIDA)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'app_colors.dart';

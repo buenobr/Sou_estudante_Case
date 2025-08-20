@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 3: lib/edit_promotion_screen.dart (VERSÃO CORRIGIDA NOME DA CLASSE STATE)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,8 +12,7 @@ class EditPromotionScreen extends StatefulWidget {
   State<EditPromotionScreen> createState() => _EditPromotionScreenState();
 }
 
-// CORREÇÃO AQUI: Adicionar 'Screen' ao nome da classe
-class _EditPromotionScreenState extends State<EditPromotionScreen> { // <--- CORREÇÃO AQUI!
+class _EditPromotionScreenState extends State<EditPromotionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _linkController = TextEditingController();

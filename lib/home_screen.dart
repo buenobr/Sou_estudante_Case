@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO: lib/home_screen.dart (CORRIGIDO PARA MANTER A POSIÇÃO DA ROLAGEM)
-// =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';

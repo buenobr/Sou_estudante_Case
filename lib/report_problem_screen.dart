@@ -1,6 +1,3 @@
-// =================================================================================
-// NOVO ARQUIVO: lib/report_problem_screen.dart
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,7 +20,8 @@ class ReportProblemScreen extends StatefulWidget {
 }
 
 class _ReportProblemScreenState extends State<ReportProblemScreen> {
-  final TextEditingController _problemDescriptionController = TextEditingController();
+  final TextEditingController _problemDescriptionController =
+      TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
@@ -33,7 +31,8 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Você precisa estar logado para reportar um problema!')),
+        const SnackBar(
+            content: Text('Você precisa estar logado para reportar um problema!')),
       );
       return;
     }
@@ -49,14 +48,14 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
         'reportedByUserEmail': user.email,
         'problemDescription': _problemDescriptionController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending', // Pode ser 'pending', 'resolved', 'ignored'
+        'status': 'pending',
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Problema reportado com sucesso!')),
         );
-        Navigator.of(context).pop(); // Volta para a tela anterior
+        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {

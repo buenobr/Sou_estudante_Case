@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 4: lib/admin_trash_screen.dart (ALTERADO)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';

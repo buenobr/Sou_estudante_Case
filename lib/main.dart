@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 3: lib/main.dart (ATUALIZADO PARA DEBUG DO ADMOB)
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,7 +17,6 @@ void main() async {
   Intl.defaultLocale = 'pt_BR';
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // NOVO: Adicione .then() e .catchError() para depurar a inicialização do AdMob
   await MobileAds.instance.initialize().then((InitializationStatus status) {
     debugPrint('AdMob inicializado com sucesso: $status');
   }).catchError((e) {

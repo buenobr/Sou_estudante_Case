@@ -1,6 +1,3 @@
-// =================================================================================
-// ARQUIVO 4: NOVO ARQUIVO em lib/verify_email_screen.dart
-// =================================================================================
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,12 +12,10 @@ class VerifyEmailScreen extends StatefulWidget {
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Timer? _timer;
-  // bool _isEmailVerified = false; // VARIÁVEL REMOVIDA
 
   @override
   void initState() {
     super.initState();
-    // Inicia um timer para verificar o status do e-mail a cada 3 segundos
     _timer = Timer.periodic(const Duration(seconds: 3), (_) => _checkEmailVerified());
   }
 
@@ -35,7 +30,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     await user?.reload();
     if (user?.emailVerified ?? false) {
       _timer?.cancel();
-      // O AuthGate no main.dart vai detectar a mudança e navegar para a HomeScreen
     }
   }
 

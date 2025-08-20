@@ -1,6 +1,3 @@
-// =================================================================================
-// 2. NOVO ARQUIVO: lib/admin_user_management_screen.dart
-// =================================================================================
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'app_colors.dart';
@@ -16,7 +13,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
 
-  // Função para promover um usuário a admin
   Future<void> _promoteUser(String uid) async {
     final confirm = await _showConfirmationDialog(
       title: 'Promover Usuário',
@@ -27,7 +23,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     }
   }
 
-  // Função para rebaixar um admin a usuário
   Future<void> _demoteUser(String uid) async {
     final confirm = await _showConfirmationDialog(
       title: 'Rebaixar Admin',
@@ -38,7 +33,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     }
   }
 
-  // Função para deletar um usuário
   Future<void> _deleteUser(String uid) async {
     final confirm = await _showConfirmationDialog(
       title: 'Excluir Usuário',
@@ -51,7 +45,6 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
     }
   }
 
-  // Dialog de confirmação genérico
   Future<bool?> _showConfirmationDialog({
     required String title,
     required String content,

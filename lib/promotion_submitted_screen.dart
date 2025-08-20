@@ -1,8 +1,5 @@
-// =================================================================================
-// NOVO ARQUIVO: lib/promotion_submitted_screen.dart
-// =================================================================================
 import 'package:flutter/material.dart';
-import 'package:sou_estudante/app_colors.dart'; // Importe suas cores
+import 'package:sou_estudante/app_colors.dart';
 
 class PromotionSubmittedScreen extends StatelessWidget {
   const PromotionSubmittedScreen({super.key});
@@ -12,7 +9,7 @@ class PromotionSubmittedScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Promoção Enviada!'),
-        automaticallyImplyLeading: false, // Remove a seta de voltar da AppBar
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: Padding(
@@ -23,7 +20,7 @@ class PromotionSubmittedScreen extends StatelessWidget {
             children: [
               Icon(
                 Icons.check_circle_outline,
-                color: AppColors.price, // Cor verde para sucesso
+                color: AppColors.price,
                 size: 100,
               ),
               const SizedBox(height: 24),
@@ -53,7 +50,6 @@ class PromotionSubmittedScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Retorna para a tela anterior (normalmente a HomeScreen)
                     Navigator.of(context).pop();
                   },
                   child: const Text('OK'),
